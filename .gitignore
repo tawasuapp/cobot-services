@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build
+dist/
+build/
+.next/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Flutter
+mobile_app/.dart_tool/
+mobile_app/.packages
+mobile_app/build/
+ivd_app/.dart_tool/
+ivd_app/.packages
+ivd_app/build/
+*.iml
+
+# Firebase
+firebase-debug.log
+.firebase/
+
+# Coverage
+coverage/
