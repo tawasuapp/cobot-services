@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: cobot-postgres
+    environment:
+      POSTGRES_DB: cobot_services
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cobot-backend
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: cobot_services
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: cobot-dev-secret-key-change-in-production
+      JWT_EXPIRES_IN: 7d
+      SOCKET_CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    volumes:
+      - ./backend/src:/app/src
+      - ./shared:/app/shared
+
+volumes:
+  pgdata:

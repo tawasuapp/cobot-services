@@ -1,0 +1,44 @@
+name: cobot_ivd
+description: "Cobot Services - In-Vehicle Display App (Android, 1600x600)"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # HTTP & API
+  dio: ^5.7.0
+
+  # Local storage
+  shared_preferences: ^2.3.4
+  flutter_secure_storage: ^9.2.3
+
+  # Location
+  geolocator: ^13.0.2
+
+  # Maps (for opening external Google Maps)
+  url_launcher: ^6.3.1
+
+  # Push Notifications (to send to mobile app)
+  firebase_core: ^3.9.0
+  firebase_messaging: ^15.1.6
+
+  # Utils
+  intl: ^0.20.2
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

@@ -1,0 +1,54 @@
+name: cobot_mobile
+description: "Cobot Services - Robot Operator Mobile App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management
+  provider: ^6.1.2
+
+  # HTTP & API
+  dio: ^5.7.0
+
+  # Local storage
+  shared_preferences: ^2.3.4
+  flutter_secure_storage: ^9.2.3
+
+  # Location
+  geolocator: ^13.0.2
+
+  # Maps (for opening external maps)
+  url_launcher: ^6.3.1
+
+  # QR Scanner
+  mobile_scanner: ^6.0.5
+
+  # Camera & Image
+  image_picker: ^1.1.2
+
+  # Push Notifications
+  firebase_core: ^3.9.0
+  firebase_messaging: ^15.1.6
+  flutter_local_notifications: ^18.0.1
+
+  # UI
+  cached_network_image: ^3.4.1
+
+  # Utils
+  intl: ^0.20.2
+  permission_handler: ^11.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
