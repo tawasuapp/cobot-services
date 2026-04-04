@@ -87,7 +87,11 @@ class _AuthGateState extends State<_AuthGate> {
         debugPrint('Notification init skipped: $e');
       }
       if (mounted) {
-        context.read<LocationProvider>().startTracking();
+        // Track location as this user (operator)
+        final locProvider = context.read<LocationProvider>();
+        locProvider.entityType = 'user';
+        locProvider.entityId = auth.currentUser?.id;
+        locProvider.startTracking();
       }
     }
 

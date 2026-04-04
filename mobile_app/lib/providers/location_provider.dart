@@ -15,12 +15,20 @@ class LocationProvider extends ChangeNotifier {
   bool _isTracking = false;
   StreamSubscription<Position>? _positionSubscription;
 
+  /// Set these before starting tracking so location updates
+  /// are tagged with the right entity (vehicle or user)
+  String? entityType; // 'vehicle' or 'user'
+  String? entityId;
+
   Position? get currentPosition => _currentPosition;
   bool get isTracking => _isTracking;
 
   Future<void> startTracking() async {
     final hasPermission = await _locationService.checkAndRequestPermission();
-    if (!hasPermission) return;
+    if (!hasPermission) {
+      debugPrint('Location permission denied');
+      return;
+    }
 
     _isTracking = true;
     notifyListeners();
@@ -31,6 +39,9 @@ class LocationProvider extends ChangeNotifier {
         _currentPosition = position;
         _sendLocationUpdate(position);
         notifyListeners();
+      },
+      onError: (e) {
+        debugPrint('Location stream error: $e');
       },
     );
   }
@@ -43,19 +54,26 @@ class LocationProvider extends ChangeNotifier {
   }
 
   Future<void> _sendLocationUpdate(Position position) async {
+    if (entityType == null || entityId == null) {
+      debugPrint('Location update skipped: no entityType/entityId set');
+      return;
+    }
+
     try {
       await _api.post(
         ApiConfig.locationUpdate,
         data: {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-          'accuracy': position.accuracy,
+          'entity_type': entityType,
+          'entity_id': entityId,
+          'lat': position.latitude,
+          'lng': position.longitude,
           'speed': position.speed,
-          'timestamp': position.timestamp.toIso8601String(),
+          'heading': position.heading,
+          'accuracy': position.accuracy,
         },
       );
-    } catch (_) {
-      // Silently fail - location updates are best-effort
+    } catch (e) {
+      debugPrint('Location update failed: $e');
     }
   }
 
