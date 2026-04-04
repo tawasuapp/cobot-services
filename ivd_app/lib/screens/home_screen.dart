@@ -96,22 +96,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const Spacer(),
-                if (user?.vanName != null) ...[
-                  const Icon(Icons.local_shipping,
-                      color: IvdTheme.textSecondary, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Van: ${user!.vanName}',
-                    style: const TextStyle(
-                        fontSize: 16, color: IvdTheme.textSecondary),
-                  ),
-                  const SizedBox(width: 24),
-                ],
                 const Icon(Icons.person,
                     color: IvdTheme.textSecondary, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  user?.name ?? '',
+                  user?.fullName ?? '',
                   style: const TextStyle(
                       fontSize: 16, color: IvdTheme.textSecondary),
                 ),
@@ -207,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       const SizedBox(width: 8),
                                       Text(
                                         DateFormat('HH:mm')
-                                            .format(job.scheduledTime),
+                                            .format(job.scheduledDateTime),
                                         style: const TextStyle(
                                           fontSize: 14,
                                           color: IvdTheme.textSecondary,
@@ -273,14 +262,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                           ),
                                         ),
                                         const SizedBox(width: 16),
-                                        IvdButton(
-                                          label: 'SKIP JOB',
-                                          icon: Icons.skip_next,
-                                          onPressed: () =>
-                                              _skipJob(currentJob),
-                                          backgroundColor:
-                                              IvdTheme.warningOrange,
-                                          minHeight: 64,
+                                        Expanded(
+                                          child: IvdButton(
+                                            label: 'SKIP JOB',
+                                            icon: Icons.skip_next,
+                                            onPressed: () =>
+                                                _skipJob(currentJob),
+                                            backgroundColor:
+                                                IvdTheme.warningOrange,
+                                            minHeight: 64,
+                                            fontSize: 20,
+                                            expanded: true,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -369,15 +362,17 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (status) {
       case JobStatus.completed:
         return Icons.check_circle;
-      case JobStatus.driving:
+      case JobStatus.enRoute:
         return Icons.navigation;
       case JobStatus.arrived:
         return Icons.location_on;
       case JobStatus.inProgress:
         return Icons.engineering;
-      case JobStatus.skipped:
+      case JobStatus.cancelled:
+      case JobStatus.failed:
         return Icons.skip_next;
-      case JobStatus.pending:
+      case JobStatus.scheduled:
+      case JobStatus.assigned:
         return Icons.radio_button_unchecked;
     }
   }
@@ -386,15 +381,17 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (status) {
       case JobStatus.completed:
         return IvdTheme.successGreen;
-      case JobStatus.driving:
+      case JobStatus.enRoute:
         return IvdTheme.primaryBlue;
       case JobStatus.arrived:
         return IvdTheme.accentBlue;
       case JobStatus.inProgress:
         return IvdTheme.warningOrange;
-      case JobStatus.skipped:
+      case JobStatus.cancelled:
+      case JobStatus.failed:
         return IvdTheme.textSecondary;
-      case JobStatus.pending:
+      case JobStatus.scheduled:
+      case JobStatus.assigned:
         return IvdTheme.textSecondary;
     }
   }

@@ -1,6 +1,6 @@
 class ApiConfig {
-  static const String devBaseUrl = 'http://10.0.2.2:3000/api/v1';
-  static const String prodBaseUrl = 'https://api.cobotservices.com/api/v1';
+  static const String devBaseUrl = 'http://100.82.50.72:3000/api';
+  static const String prodBaseUrl = 'https://api.cobotservices.com/api';
 
   static const bool isProduction = bool.fromEnvironment('dart.vm.product');
 

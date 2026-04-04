@@ -98,6 +98,6 @@ class AuthProvider extends ChangeNotifier {
         return 'Network error. Please check your connection.';
       }
     }
-    return 'An unexpected error occurred. Please try again.';
+    return 'Login failed: $e';
   }
 }

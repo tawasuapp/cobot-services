@@ -53,7 +53,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Job #${liveJob.id.substring(0, 8)}',
+                  liveJob.jobNumber ?? 'Job #${liveJob.id.substring(0, 8)}',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 StatusBadge(status: liveJob.status),
@@ -82,11 +82,15 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               icon: Icons.work,
               children: [
                 _InfoRow('Service', liveJob.serviceType),
-                _InfoRow('Scheduled', Helpers.formatDateTime(liveJob.scheduledAt)),
+                _InfoRow('Scheduled', Helpers.formatDateTime(liveJob.scheduledDateTime)),
+                if (liveJob.priority != null)
+                  _InfoRow('Priority', liveJob.priority!),
+                if (liveJob.estimatedDurationMinutes != null)
+                  _InfoRow('Duration', '${liveJob.estimatedDurationMinutes} min'),
                 if (liveJob.robot != null)
-                  _InfoRow('Robot', '${liveJob.robot!.model} (${liveJob.robot!.serialNumber})'),
+                  _InfoRow('Robot', '${liveJob.robot!.name} (${liveJob.robot!.serialNumber})'),
                 if (liveJob.vehicle != null)
-                  _InfoRow('Vehicle', '${liveJob.vehicle!.make} ${liveJob.vehicle!.model} - ${liveJob.vehicle!.licensePlate}'),
+                  _InfoRow('Vehicle', '${liveJob.vehicle!.name} - ${liveJob.vehicle!.plateNumber}'),
                 if (liveJob.notes != null) _InfoRow('Notes', liveJob.notes!),
               ],
             ),

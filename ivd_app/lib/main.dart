@@ -14,7 +14,7 @@ import 'screens/arrived_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Force landscape orientation for the 1600x600 IVD display
+  // Force landscape for 1600x600 IVD display
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,

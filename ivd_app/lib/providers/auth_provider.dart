@@ -39,7 +39,8 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _isLoading = false;
-      _errorMessage = 'Login failed. Please check your credentials.';
+      _errorMessage = 'Login failed: $e';
+      debugPrint('LOGIN ERROR: $e');
       notifyListeners();
       return false;
     }

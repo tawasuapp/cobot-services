@@ -1,6 +1,6 @@
 class ApiConfig {
-  static const String devBaseUrl = 'http://localhost:3000/api/v1';
-  static const String prodBaseUrl = 'https://api.cobotservices.com/api/v1';
+  static const String devBaseUrl = 'http://100.82.50.72:3000/api';
+  static const String prodBaseUrl = 'https://api.cobotservices.com/api';
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',

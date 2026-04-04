@@ -1,24 +1,27 @@
 class Robot {
   final String id;
   final String serialNumber;
-  final String model;
+  final String name;
   final String status;
+  final int? batteryLevel;
   final String? firmwareVersion;
 
   Robot({
     required this.id,
     required this.serialNumber,
-    required this.model,
+    required this.name,
     required this.status,
+    this.batteryLevel,
     this.firmwareVersion,
   });
 
   factory Robot.fromJson(Map<String, dynamic> json) {
     return Robot(
-      id: json['id'] as String,
-      serialNumber: json['serial_number'] as String,
-      model: json['model'] as String,
-      status: json['status'] as String,
+      id: json['id'] as String? ?? '',
+      serialNumber: json['serial_number'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      status: json['status'] as String? ?? 'unknown',
+      batteryLevel: json['battery_level'] as int?,
       firmwareVersion: json['firmware_version'] as String?,
     );
   }
@@ -27,8 +30,9 @@ class Robot {
     return {
       'id': id,
       'serial_number': serialNumber,
-      'model': model,
+      'name': name,
       'status': status,
+      'battery_level': batteryLevel,
       'firmware_version': firmwareVersion,
     };
   }

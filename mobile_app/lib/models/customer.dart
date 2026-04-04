@@ -20,22 +20,32 @@ class Customer {
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
+    // Handle nested Customer/customer key from backend
+    final data = json['Customer'] ?? json['customer'] ?? json;
+
     return Customer(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      address: json['address'] as String,
-      phone: json['phone'] as String?,
-      email: json['email'] as String?,
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      contactPerson: json['contact_person'] as String?,
+      id: data['id'] as String? ?? '',
+      name: data['company_name'] as String? ?? data['name'] as String? ?? '',
+      address: data['address'] as String? ?? '',
+      phone: data['phone'] as String?,
+      email: data['email'] as String?,
+      latitude: _parseDouble(data['latitude']),
+      longitude: _parseDouble(data['longitude']),
+      contactPerson: data['contact_person'] as String?,
     );
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
+      'company_name': name,
       'address': address,
       'phone': phone,
       'email': email,

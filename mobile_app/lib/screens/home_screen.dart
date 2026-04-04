@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final jobs = context.watch<JobProvider>();
-    final userName = auth.currentUser?.name ?? 'Operator';
+    final userName = auth.currentUser?.fullName ?? 'Operator';
 
     return Scaffold(
       appBar: AppBar(
@@ -93,7 +93,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _SummaryCard(
                       title: 'Next Job',
                       value: jobs.nextJob != null
-                          ? Helpers.formatTime(jobs.nextJob!.scheduledAt)
+                          ? jobs.nextJob!.formattedTime
                           : '--:--',
                       icon: Icons.schedule,
                       color: Colors.orange,

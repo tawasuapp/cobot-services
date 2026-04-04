@@ -36,23 +36,24 @@ class Helpers {
     }
   }
 
+  // Test origin: Qatar Science and Technology Park
+  static const double _testOriginLat = 25.3148;
+  static const double _testOriginLng = 51.4402;
+
   /// Open Google Maps navigation to the given coordinates.
+  /// Uses QSTP as origin for testing purposes.
   static Future<bool> openGoogleMapsNavigation(
     double latitude,
     double longitude,
   ) async {
+    // Use Google Maps directions with explicit origin (QSTP) for testing
     final uri = Uri.parse(
-      'google.navigation:q=$latitude,$longitude&mode=d',
+      'https://www.google.com/maps/dir/?api=1'
+      '&origin=$_testOriginLat,$_testOriginLng'
+      '&destination=$latitude,$longitude'
+      '&travelmode=driving',
     );
-    if (await canLaunchUrl(uri)) {
-      return launchUrl(uri);
-    }
-
-    // Fallback to web Google Maps
-    final webUri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude&travelmode=driving',
-    );
-    return launchUrl(webUri, mode: LaunchMode.externalApplication);
+    return launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   /// Open a phone dialer with the given number.

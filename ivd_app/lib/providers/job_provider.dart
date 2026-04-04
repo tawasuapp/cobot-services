@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/job.dart';
 import '../services/api_service.dart';
-import '../config/api_config.dart';
 
 class JobProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -21,13 +20,16 @@ class JobProvider extends ChangeNotifier {
 
   int get remainingCount => _jobs
       .where((j) =>
-          j.status == JobStatus.pending || j.status == JobStatus.driving)
+          j.status != JobStatus.completed &&
+          j.status != JobStatus.cancelled &&
+          j.status != JobStatus.failed)
       .length;
 
   List<Job> get upcomingJobs => _jobs
-      .where((j) => j.status == JobStatus.pending)
+      .where((j) =>
+          j.status == JobStatus.scheduled || j.status == JobStatus.assigned)
       .toList()
-    ..sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+    ..sort((a, b) => a.scheduledDateTime.compareTo(b.scheduledDateTime));
 
   Future<void> fetchTodayJobs() async {
     _isLoading = true;
@@ -35,24 +37,35 @@ class JobProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final today = DateTime.now().toIso8601String().substring(0, 10);
       final response = await _apiService.get(
-        ApiConfig.jobs,
-        queryParameters: {
-          'date': DateTime.now().toIso8601String().substring(0, 10),
-        },
+        '/jobs',
+        queryParameters: {'date_from': today, 'date_to': today, 'limit': '50'},
       );
 
-      final List<dynamic> jobsData = response.data['jobs'] as List<dynamic>;
+      final responseData = response.data;
+      List<dynamic> jobsData;
+
+      // Handle both {data: [...]} and direct [...] response formats
+      if (responseData is Map && responseData.containsKey('data')) {
+        jobsData = responseData['data'] as List<dynamic>;
+      } else if (responseData is List) {
+        jobsData = responseData;
+      } else {
+        jobsData = [];
+      }
+
       _jobs = jobsData
           .map((j) => Job.fromJson(j as Map<String, dynamic>))
           .toList();
-      _jobs.sort((a, b) => a.scheduledTime.compareTo(b.scheduledTime));
+      _jobs.sort((a, b) => a.scheduledDateTime.compareTo(b.scheduledDateTime));
 
-      // Set current job to the first non-completed, non-skipped job
+      // Set current job to the first active/pending job
       _currentJob = _jobs.cast<Job?>().firstWhere(
             (j) =>
-                j!.status == JobStatus.pending ||
-                j.status == JobStatus.driving ||
+                j!.status == JobStatus.scheduled ||
+                j.status == JobStatus.assigned ||
+                j.status == JobStatus.enRoute ||
                 j.status == JobStatus.arrived,
             orElse: () => null,
           );
@@ -61,15 +74,16 @@ class JobProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      _errorMessage = 'Failed to load jobs.';
+      _errorMessage = 'Failed to load jobs: $e';
+      debugPrint('FETCH JOBS ERROR: $e');
       notifyListeners();
     }
   }
 
   Future<void> updateJobStatus(String jobId, JobStatus status) async {
     try {
-      await _apiService.patch(
-        ApiConfig.jobStatusUrl(jobId),
+      await _apiService.put(
+        '/jobs/$jobId/status',
         data: {'status': jobStatusToString(status)},
       );
 
@@ -82,23 +96,26 @@ class JobProvider extends ChangeNotifier {
         _currentJob = _currentJob!.copyWith(status: status);
       }
 
-      // If completed or skipped, advance to next job
-      if (status == JobStatus.completed || status == JobStatus.skipped) {
+      // If completed or cancelled, advance to next job
+      if (status == JobStatus.completed || status == JobStatus.cancelled) {
         _currentJob = _jobs.cast<Job?>().firstWhere(
-              (j) => j!.status == JobStatus.pending,
+              (j) =>
+                  j!.status == JobStatus.scheduled ||
+                  j.status == JobStatus.assigned,
               orElse: () => null,
             );
       }
 
       notifyListeners();
     } catch (e) {
-      _errorMessage = 'Failed to update job status.';
+      _errorMessage = 'Failed to update job status: $e';
+      debugPrint('UPDATE STATUS ERROR: $e');
       notifyListeners();
     }
   }
 
   Future<void> startDriving(String jobId) async {
-    await updateJobStatus(jobId, JobStatus.driving);
+    await updateJobStatus(jobId, JobStatus.enRoute);
   }
 
   Future<void> markArrived(String jobId) async {
@@ -106,7 +123,7 @@ class JobProvider extends ChangeNotifier {
   }
 
   Future<void> skipJob(String jobId) async {
-    await updateJobStatus(jobId, JobStatus.skipped);
+    await updateJobStatus(jobId, JobStatus.cancelled);
   }
 
   Future<void> completeJob(String jobId) async {

@@ -4,8 +4,7 @@ class Customer {
   final String address;
   final double latitude;
   final double longitude;
-  final String? contactPhone;
-  final String? notes;
+  final String? phone;
 
   Customer({
     required this.id,
@@ -13,29 +12,33 @@ class Customer {
     required this.address,
     required this.latitude,
     required this.longitude,
-    this.contactPhone,
-    this.notes,
+    this.phone,
   });
 
   factory Customer.fromJson(Map<String, dynamic> json) {
     return Customer(
       id: json['id'] as String,
-      name: json['name'] as String,
-      address: json['address'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      contactPhone: json['contact_phone'] as String?,
-      notes: json['notes'] as String?,
+      name: (json['company_name'] ?? json['name'] ?? '') as String,
+      address: (json['address'] ?? '') as String,
+      latitude: _toDouble(json['latitude']),
+      longitude: _toDouble(json['longitude']),
+      phone: json['phone'] as String?,
     );
+  }
+
+  static double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    if (v is String) return double.tryParse(v) ?? 0.0;
+    return 0.0;
   }
 
   Map<String, dynamic> toJson() => {
         'id': id,
-        'name': name,
+        'company_name': name,
         'address': address,
         'latitude': latitude,
         'longitude': longitude,
-        'contact_phone': contactPhone,
-        'notes': notes,
       };
 }

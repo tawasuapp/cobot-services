@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 import '../config/api_config.dart';
 import '../models/job.dart';
@@ -34,7 +35,7 @@ class JobProvider extends ChangeNotifier {
 
   Job? get nextJob {
     final upcoming = scheduledJobs
-      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      ..sort((a, b) => a.scheduledDateTime.compareTo(b.scheduledDateTime));
     return upcoming.isNotEmpty ? upcoming.first : null;
   }
 
@@ -43,8 +44,17 @@ class JobProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _api.get(ApiConfig.todaysJobs);
-      final List<dynamic> data = response.data as List<dynamic>;
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final response = await _api.get(
+        ApiConfig.jobs,
+        queryParameters: {
+          'date_from': today,
+          'date_to': today,
+        },
+      );
+
+      final responseData = response.data as Map<String, dynamic>;
+      final List<dynamic> data = responseData['data'] as List<dynamic>;
       _todaysJobs = data
           .map((json) => Job.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -58,26 +68,31 @@ class JobProvider extends ChangeNotifier {
 
       _error = null;
     } catch (e) {
-      _error = 'Failed to fetch today\'s jobs';
+      _error = 'Failed to fetch today\'s jobs: $e';
     }
 
     _isLoading = false;
     notifyListeners();
   }
 
-  Future<void> fetchOperatorJobs() async {
+  Future<void> fetchOperatorJobs([String? operatorId]) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final response = await _api.get(ApiConfig.operatorJobs);
-      final List<dynamic> data = response.data as List<dynamic>;
+      final String path = operatorId != null
+          ? '${ApiConfig.jobs}/operator/$operatorId'
+          : ApiConfig.jobs;
+
+      final response = await _api.get(path);
+      final responseData = response.data as Map<String, dynamic>;
+      final List<dynamic> data = responseData['data'] as List<dynamic>;
       _operatorJobs = data
           .map((json) => Job.fromJson(json as Map<String, dynamic>))
           .toList();
       _error = null;
     } catch (e) {
-      _error = 'Failed to fetch jobs';
+      _error = 'Failed to fetch jobs: $e';
     }
 
     _isLoading = false;
@@ -86,7 +101,7 @@ class JobProvider extends ChangeNotifier {
 
   Future<bool> updateJobStatus(String jobId, String newStatus) async {
     try {
-      await _api.patch(
+      await _api.put(
         '${ApiConfig.jobs}/$jobId/status',
         data: {'status': newStatus},
       );
@@ -109,7 +124,7 @@ class JobProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _error = 'Failed to update job status';
+      _error = 'Failed to update job status: $e';
       notifyListeners();
       return false;
     }

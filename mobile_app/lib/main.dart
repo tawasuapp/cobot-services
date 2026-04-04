@@ -19,8 +19,13 @@ import 'services/notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp();
-  FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+  // Firebase is optional — push notifications won't work without google-services.json
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
+  } catch (e) {
+    debugPrint('Firebase init skipped: $e');
+  }
 
   runApp(const CobotApp());
 }
@@ -76,7 +81,11 @@ class _AuthGateState extends State<_AuthGate> {
     await auth.tryAutoLogin();
 
     if (auth.isLoggedIn) {
-      await NotificationService().initialize();
+      try {
+        await NotificationService().initialize();
+      } catch (e) {
+        debugPrint('Notification init skipped: $e');
+      }
       if (mounted) {
         context.read<LocationProvider>().startTracking();
       }

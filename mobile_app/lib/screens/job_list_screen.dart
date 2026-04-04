@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../models/job.dart';
@@ -34,6 +35,8 @@ class _JobListScreenState extends State<JobListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Jobs'),
@@ -52,16 +55,23 @@ class _JobListScreenState extends State<JobListScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
+          // Today: scheduled_date == today
           _JobTab(
-            jobSelector: (provider) => provider.todaysJobs,
+            jobSelector: (provider) => provider.operatorJobs
+                .where((j) => j.scheduledDate == today)
+                .toList(),
             onRefresh: () => context.read<JobProvider>().fetchTodaysJobs(),
             emptyMessage: 'No jobs scheduled for today',
           ),
+          // Upcoming: scheduled_date > today
           _JobTab(
-            jobSelector: (provider) => provider.scheduledJobs,
+            jobSelector: (provider) => provider.operatorJobs
+                .where((j) => j.scheduledDate.compareTo(today) > 0)
+                .toList(),
             onRefresh: () => context.read<JobProvider>().fetchOperatorJobs(),
             emptyMessage: 'No upcoming jobs',
           ),
+          // Completed: status == completed
           _JobTab(
             jobSelector: (provider) => provider.completedJobs,
             onRefresh: () => context.read<JobProvider>().fetchOperatorJobs(),

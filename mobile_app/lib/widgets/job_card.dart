@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../models/job.dart';
 import 'status_badge.dart';
@@ -12,9 +11,6 @@ class JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeFormat = DateFormat('h:mm a');
-    final dateFormat = DateFormat('MMM d, yyyy');
-
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -54,12 +50,12 @@ class JobCard extends StatelessWidget {
                   const Icon(Icons.schedule, size: 16, color: Colors.grey),
                   const SizedBox(width: 6),
                   Text(
-                    '${dateFormat.format(job.scheduledAt)} at ${timeFormat.format(job.scheduledAt)}',
+                    '${job.scheduledDate} at ${job.formattedTime}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
-              if (job.customer?.address != null) ...[
+              if (job.customer?.address != null && job.customer!.address.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -83,7 +79,7 @@ class JobCard extends StatelessWidget {
                     const Icon(Icons.smart_toy, size: 16, color: Colors.grey),
                     const SizedBox(width: 6),
                     Text(
-                      '${job.robot!.model} (${job.robot!.serialNumber})',
+                      '${job.robot!.name} (${job.robot!.serialNumber})',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

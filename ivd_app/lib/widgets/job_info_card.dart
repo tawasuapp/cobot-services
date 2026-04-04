@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/job.dart';
 import '../config/theme.dart';
 
@@ -22,7 +21,6 @@ class JobInfoCard extends StatelessWidget {
   }
 
   Widget _buildCompact(BuildContext context) {
-    final timeFormat = DateFormat('HH:mm');
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -32,14 +30,10 @@ class JobInfoCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.schedule,
-            color: IvdTheme.textSecondary,
-            size: 18,
-          ),
+          Icon(Icons.schedule, color: IvdTheme.textSecondary, size: 18),
           const SizedBox(width: 8),
           Text(
-            timeFormat.format(job.scheduledTime),
+            job.formattedTime,
             style: const TextStyle(
               color: IvdTheme.textSecondary,
               fontSize: 16,
@@ -50,10 +44,7 @@ class JobInfoCard extends StatelessWidget {
           Flexible(
             child: Text(
               job.customer.name,
-              style: const TextStyle(
-                color: IvdTheme.textPrimary,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: IvdTheme.textPrimary, fontSize: 16),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -92,10 +83,7 @@ class JobInfoCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   job.customer.address,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: IvdTheme.textSecondary,
-                  ),
+                  style: const TextStyle(fontSize: 18, color: IvdTheme.textSecondary),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
                 ),
@@ -108,22 +96,16 @@ class JobInfoCard extends StatelessWidget {
               const Icon(Icons.schedule, color: IvdTheme.accentBlue, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Scheduled: ${DateFormat('HH:mm').format(job.scheduledTime)}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: IvdTheme.textSecondary,
-                ),
+                'Scheduled: ${job.formattedTime}',
+                style: const TextStyle(fontSize: 18, color: IvdTheme.textSecondary),
               ),
-              if (job.estimatedDuration != null) ...[
+              if (job.estimatedDurationMinutes != null) ...[
                 const SizedBox(width: 16),
                 const Icon(Icons.timer, color: IvdTheme.accentBlue, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  job.estimatedDuration!,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: IvdTheme.textSecondary,
-                  ),
+                  '${job.estimatedDurationMinutes} min',
+                  style: const TextStyle(fontSize: 18, color: IvdTheme.textSecondary),
                 ),
               ],
             ],
@@ -137,10 +119,7 @@ class JobInfoCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     job.notes!,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: IvdTheme.warningOrange,
-                    ),
+                    style: const TextStyle(fontSize: 16, color: IvdTheme.warningOrange),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
