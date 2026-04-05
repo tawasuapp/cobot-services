@@ -80,6 +80,12 @@ const Customer = sequelize.define('Customer', {
     validate: { isIn: [['standard', 'silver', 'gold', 'platinum']] },
   },
   qr_code: DataTypes.TEXT,
+  robot_map: DataTypes.TEXT,
+  robots_required: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+  },
+  non_robot_activities: DataTypes.TEXT,
   notes: DataTypes.TEXT,
   status: {
     type: DataTypes.STRING(20),
