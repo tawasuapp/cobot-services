@@ -22,25 +22,33 @@ L.Icon.Default.mergeOptions({
 
 const DOHA_CENTER = [25.2854, 51.531];
 
-function createIcon(color, size = 14) {
+function pinSvg(fill) {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"><path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="${fill}" stroke="#fff" stroke-width="2"/><circle cx="14" cy="14" r="6" fill="#fff"/></svg>`;
+}
+
+function createIcon(color) {
   return new L.DivIcon({
     className: '',
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.3)"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    html: pinSvg(color),
+    iconSize: [28, 36],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -36],
   });
 }
 
 function createLabelIcon(color, label) {
   return new L.DivIcon({
     className: '',
-    html: `<div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.3)"></div><span style="font-size:11px;font-weight:600;color:#333;background:#fff;padding:1px 6px;border-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.2);white-space:nowrap">${label}</span></div>`,
-    iconSize: [100, 20],
-    iconAnchor: [6, 10],
+    html: `<div style="display:flex;flex-direction:column;align-items:center">${pinSvg(color)}<span style="margin-top:2px;font-size:11px;font-weight:700;color:#333;background:#fff;padding:2px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;line-height:1.2">${label}</span></div>`,
+    iconSize: [120, 56],
+    iconAnchor: [14, 36],
+    popupAnchor: [0, -36],
   });
 }
 
-const customerIcon = createIcon('#f59e0b', 10);
+const customerIcon = createIcon('#f59e0b');
+const robotMapIcon = createIcon('#22c55e');
+const vehicleMapIcon = createIcon('#3b82f6');
 
 export default function LiveOpsCenter() {
   const [vehicles, setVehicles] = useState([]);
@@ -273,7 +281,7 @@ export default function LiveOpsCenter() {
             {robots.map(r => {
               if (!r.latitude || !r.longitude) return null;
               return (
-                <Marker key={`robot-${r.id}`} position={[r.latitude, r.longitude]} icon={createIcon('#22c55e', 10)}>
+                <Marker key={`robot-${r.id}`} position={[r.latitude, r.longitude]} icon={robotMapIcon}>
                   <Popup>
                     <div className="text-sm">
                       <p className="font-semibold">{r.name}</p>
