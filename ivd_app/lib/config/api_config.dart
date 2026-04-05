@@ -1,5 +1,5 @@
 class ApiConfig {
-  static const String devBaseUrl = 'http://35.154.243.235:3000/api';
+  static const String devBaseUrl = 'http://13.212.204.12:3000/api';
   static const String prodBaseUrl = 'https://api.cobotservices.com/api';
 
   static const bool isProduction = bool.fromEnvironment('dart.vm.product');
