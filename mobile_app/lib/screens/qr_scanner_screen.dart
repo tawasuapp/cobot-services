@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +32,34 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     super.dispose();
   }
 
+  Future<void> _handleIvdLogin(String sessionId) async {
+    try {
+      await ApiService().post(
+        '/auth/ivd-approve',
+        data: {'sessionId': sessionId},
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('IVD connected successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to connect IVD: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_isProcessing) return;
     final barcode = capture.barcodes.firstOrNull;
@@ -38,6 +68,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     setState(() => _isProcessing = true);
 
     final rawData = barcode.rawValue!;
+
+    // Check if this is an IVD login QR code
+    try {
+      final parsed = jsonDecode(rawData);
+      if (parsed is Map && parsed['type'] == 'ivd_login') {
+        await _handleIvdLogin(parsed['sessionId'] as String);
+        return;
+      }
+    } catch (_) {
+      // Not JSON or not IVD login — continue with normal QR flow
+    }
+
     final result = QrService.parseQrData(rawData);
 
     if (!result.isValid) {
@@ -53,26 +95,26 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       return;
     }
 
-    // Send to backend
+    // Send to backend for job-related QR
     try {
-      final job = ModalRoute.of(context)!.settings.arguments as Job;
+      final job = ModalRoute.of(context)?.settings.arguments as Job?;
       await ApiService().post(
         ApiConfig.qrScan,
         data: {
-          'job_id': result.jobId,
-          'customer_id': result.customerId,
-          'type': result.type,
-          'scanned_job_id': job.id,
+          'qrData': rawData,
+          'jobId': job?.id,
+          'scanType': result.type,
         },
       );
 
-      // Update job status to in_progress
-      if (mounted) {
+      if (job != null && mounted) {
         await context.read<JobProvider>().updateJobStatus(job.id, 'in_progress');
+      }
 
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('QR verified successfully! Job is now in progress.'),
+            content: Text('QR verified successfully!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -81,8 +123,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to verify QR code. Please try again.'),
+          SnackBar(
+            content: Text('Failed to verify QR code: $e'),
             backgroundColor: Colors.red,
           ),
         );

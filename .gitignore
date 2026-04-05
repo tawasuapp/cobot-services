@@ -45,3 +45,4 @@ firebase-debug.log
 # Coverage
 coverage/
 cobot-key.pem
+backend/firebase-admin-sdk.json

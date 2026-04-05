@@ -46,6 +46,11 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  void setUser(User user) {
+    _user = user;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     await _apiService.clearToken();
     _user = null;

@@ -45,6 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.of(context).pushNamed('/qr-scanner'),
+        icon: const Icon(Icons.qr_code_scanner),
+        label: const Text('Scan QR'),
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           await jobs.fetchTodaysJobs();

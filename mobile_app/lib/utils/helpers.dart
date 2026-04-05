@@ -36,20 +36,14 @@ class Helpers {
     }
   }
 
-  // Test origin: Qatar Science and Technology Park
-  static const double _testOriginLat = 25.3148;
-  static const double _testOriginLng = 51.4402;
-
   /// Open Google Maps navigation to the given coordinates.
-  /// Uses QSTP as origin for testing purposes.
+  /// Uses device's real GPS location as origin.
   static Future<bool> openGoogleMapsNavigation(
     double latitude,
     double longitude,
   ) async {
-    // Use Google Maps directions with explicit origin (QSTP) for testing
     final uri = Uri.parse(
       'https://www.google.com/maps/dir/?api=1'
-      '&origin=$_testOriginLat,$_testOriginLng'
       '&destination=$latitude,$longitude'
       '&travelmode=driving',
     );
