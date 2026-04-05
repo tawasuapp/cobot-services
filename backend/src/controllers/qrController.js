@@ -66,7 +66,17 @@ async function processScan(req, res, next) {
         break;
 
       case 'vehicle_return':
-        // Confirm robot back in vehicle - final step
+        // Confirm robot back in vehicle
+        // Find the job's robot and ensure it's marked available and back in vehicle
+        if (jobId) {
+          const job = await Job.findByPk(jobId);
+          if (job && job.assigned_robot_id) {
+            await Robot.update(
+              { status: 'available', assigned_job_id: null, assigned_vehicle_id: parsed.id },
+              { where: { id: job.assigned_robot_id } }
+            );
+          }
+        }
         break;
     }
 
