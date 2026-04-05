@@ -5,7 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 
-COPY . .
+COPY src/ ./src/
+COPY firebase-admin-sdk.json ./
 
 EXPOSE 3000
 

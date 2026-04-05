@@ -8,7 +8,12 @@ module.exports = {
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     dialect: 'postgres',
-    logging: console.log,
+    logging: process.env.DB_HOST && process.env.DB_HOST !== 'localhost' ? false : console.log,
+    ...(process.env.DB_HOST && process.env.DB_HOST !== 'localhost' ? {
+      dialectOptions: {
+        ssl: { require: true, rejectUnauthorized: false },
+      },
+    } : {}),
   },
   test: {
     username: process.env.DB_USER || 'postgres',
