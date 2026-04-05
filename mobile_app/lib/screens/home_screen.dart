@@ -43,68 +43,76 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             // App bar with greeting
             SliverAppBar(
-              expandedHeight: 130,
+              expandedHeight: 140,
               pinned: true,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [theme.primaryColor, theme.primaryColor.withValues(alpha: 0.8)],
-                    ),
-                  ),
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+              flexibleSpace: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCollapsed = constraints.maxHeight <= kToolbarHeight + MediaQuery.of(context).padding.top + 10;
+                  return FlexibleSpaceBar(
+                    centerTitle: true,
+                    title: isCollapsed
+                        ? const Text('Cobot Operator', style: TextStyle(fontSize: 18, color: Colors.white))
+                        : null,
+                    collapseMode: CollapseMode.parallax,
+                    background: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [theme.primaryColor, theme.primaryColor.withValues(alpha: 0.8)],
+                        ),
+                      ),
+                      child: SafeArea(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Colors.white24,
-                                child: Text(
-                                  '${user?.firstName.isNotEmpty == true ? user!.firstName[0] : ''}',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Hello, ${user?.firstName ?? 'Operator'}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                                    Text(Helpers.formatDate(DateTime.now()), style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                              // Tracking indicator
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: location.isTracking ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(location.isTracking ? Icons.gps_fixed : Icons.gps_off, color: Colors.white, size: 14),
-                                    const SizedBox(width: 4),
-                                    Text(location.isTracking ? 'GPS On' : 'GPS Off', style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                  ],
-                                ),
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Colors.white24,
+                                    child: Text(
+                                      user?.firstName.isNotEmpty == true ? user!.firstName[0] : '',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Hello, ${user?.firstName ?? 'Operator'}', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                                        Text(Helpers.formatDate(DateTime.now()), style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: location.isTracking ? Colors.green.withValues(alpha: 0.3) : Colors.red.withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(location.isTracking ? Icons.gps_fixed : Icons.gps_off, color: Colors.white, size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(location.isTracking ? 'GPS On' : 'GPS Off', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-              title: const Text('Cobot Operator'),
+                  );
+                },
+              )
             ),
 
             SliverPadding(
