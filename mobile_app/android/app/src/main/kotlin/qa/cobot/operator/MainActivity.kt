@@ -1,4 +1,4 @@
-package qa.cobot.cobot_mobile
+package qa.cobot.operator
 
 import io.flutter.embedding.android.FlutterActivity
 

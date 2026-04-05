@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
-import '../config/api_config.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 
@@ -11,12 +10,15 @@ class LocationProvider extends ChangeNotifier {
   final LocationService _locationService = LocationService();
   final ApiService _api = ApiService();
 
+  // ── CONFIGURABLE: Change this to adjust tracking frequency ──
+  static const Duration trackingInterval = Duration(seconds: 10);
+  // ────────────────────────────────────────────────────────────
+
   Position? _currentPosition;
   bool _isTracking = false;
-  StreamSubscription<Position>? _positionSubscription;
+  Timer? _trackingTimer;
 
-  /// Set these before starting tracking so location updates
-  /// are tagged with the right entity (vehicle or user)
+  /// Set these before calling startTracking()
   String? entityType; // 'vehicle' or 'user'
   String? entityId;
 
@@ -33,24 +35,37 @@ class LocationProvider extends ChangeNotifier {
     _isTracking = true;
     notifyListeners();
 
-    _positionSubscription?.cancel();
-    _positionSubscription = _locationService.getPositionStream().listen(
-      (position) {
-        _currentPosition = position;
-        _sendLocationUpdate(position);
-        notifyListeners();
-      },
-      onError: (e) {
-        debugPrint('Location stream error: $e');
-      },
-    );
+    // Get initial position immediately
+    await _captureAndSend();
+
+    // Then repeat at fixed interval
+    _trackingTimer?.cancel();
+    _trackingTimer = Timer.periodic(trackingInterval, (_) {
+      _captureAndSend();
+    });
   }
 
   void stopTracking() {
-    _positionSubscription?.cancel();
-    _positionSubscription = null;
+    _trackingTimer?.cancel();
+    _trackingTimer = null;
     _isTracking = false;
     notifyListeners();
+  }
+
+  Future<void> _captureAndSend() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 8),
+        ),
+      );
+      _currentPosition = position;
+      notifyListeners();
+      await _sendLocationUpdate(position);
+    } catch (e) {
+      debugPrint('Location capture failed: $e');
+    }
   }
 
   Future<void> _sendLocationUpdate(Position position) async {
@@ -61,7 +76,7 @@ class LocationProvider extends ChangeNotifier {
 
     try {
       await _api.post(
-        ApiConfig.locationUpdate,
+        '/location/update',
         data: {
           'entity_type': entityType,
           'entity_id': entityId,
@@ -72,6 +87,7 @@ class LocationProvider extends ChangeNotifier {
           'accuracy': position.accuracy,
         },
       );
+      debugPrint('Location sent: ${position.latitude}, ${position.longitude}');
     } catch (e) {
       debugPrint('Location update failed: $e');
     }

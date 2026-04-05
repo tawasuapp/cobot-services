@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "393820544778",
+    "project_id": "cobot-tawasu",
+    "storage_bucket": "cobot-tawasu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:393820544778:android:4abe4e37a653e07ee3a4f3",
+        "android_client_info": {
+          "package_name": "qa.cobot.operator"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMsPWwvTOw_nK28Wc08AmQOk7HcPZ3Pwg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

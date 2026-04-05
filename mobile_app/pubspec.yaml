@@ -1,5 +1,5 @@
-name: cobot_mobile
-description: "Cobot Services - Robot Operator Mobile App"
+name: cobot_operator
+description: "Cobot Operator - Robot Operator Mobile App"
 publish_to: 'none'
 version: 1.0.0+1
 
