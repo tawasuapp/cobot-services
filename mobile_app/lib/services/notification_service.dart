@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -59,12 +60,14 @@ class NotificationService {
 
   Future<void> _sendTokenToBackend(String token) async {
     try {
+      debugPrint('FCM: Sending token to backend: ${token.substring(0, 20)}...');
       await ApiService().put(
         ApiConfig.fcmToken,
-        data: {'fcm_token': token},
+        data: {'token': token},
       );
-    } catch (_) {
-      // Silently fail - will retry on next token refresh
+      debugPrint('FCM: Token registered successfully');
+    } catch (e) {
+      debugPrint('FCM: Failed to register token: $e');
     }
   }
 
