@@ -175,7 +175,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       case 'arrived':
         if (!_customerQrScanned) return 3;
         if (!_robotDeployed) return 4;
-        return 4;
+        return 5; // Both scanned, ready to start cleaning
       case 'in_progress':
         if (!_reportUploaded) return 6;
         if (!_robotReturned) return 7;
