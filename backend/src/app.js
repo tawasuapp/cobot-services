@@ -58,6 +58,11 @@ async function start() {
 
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+
+      // Check for overdue invoices every hour
+      const { checkOverdueInvoices } = require('./services/paymentAlertService');
+      checkOverdueInvoices(); // Run once on startup
+      setInterval(checkOverdueInvoices, 60 * 60 * 1000);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
