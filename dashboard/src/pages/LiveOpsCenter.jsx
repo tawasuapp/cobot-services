@@ -21,8 +21,23 @@ L.Icon.Default.mergeOptions({
 
 const DOHA_CENTER = [25.2854, 51.531];
 
+const vehicleIcon = new L.DivIcon({
+  className: '',
+  html: '<div style="width:14px;height:14px;border-radius:50%;background:#3b82f6;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.3)"></div>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
+const robotIcon = new L.DivIcon({
+  className: '',
+  html: '<div style="width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.3)"></div>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
+
 export default function LiveOpsCenter() {
   const [vehicles, setVehicles] = useState([]);
+  const [robots, setRobots] = useState([]);
   const [fleetStats, setFleetStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,13 +45,15 @@ export default function LiveOpsCenter() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [vehiclesRes, statsRes, activityRes] = await Promise.all([
+      const [vehiclesRes, robotsRes, statsRes, activityRes] = await Promise.all([
         api.get('/location/vehicles'),
+        api.get('/robots'),
         api.get('/analytics/overview'),
         api.get('/activity', { params: { limit: 20 } }),
       ]);
 
       setVehicles(vehiclesRes.data || []);
+      setRobots(robotsRes.data.data || robotsRes.data || []);
       setFleetStats(statsRes.data);
       setActivity(activityRes.data.data || activityRes.data || []);
     } catch (err) {
@@ -101,6 +118,7 @@ export default function LiveOpsCenter() {
                   <Marker
                     key={vehicle.id}
                     position={[vehicle.latitude, vehicle.longitude]}
+                    icon={vehicleIcon}
                   >
                     <Popup>
                       <div className="text-sm space-y-1">
@@ -111,6 +129,26 @@ export default function LiveOpsCenter() {
                         <p className="text-gray-600">
                           Driver: {vehicle.driver_name || 'Unassigned'}
                         </p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+            )}
+            {robots.map(
+              (robot) =>
+                robot.latitude &&
+                robot.longitude && (
+                  <Marker
+                    key={`robot-${robot.id}`}
+                    position={[robot.latitude, robot.longitude]}
+                    icon={robotIcon}
+                  >
+                    <Popup>
+                      <div className="text-sm space-y-1">
+                        <p className="font-semibold">{robot.name}</p>
+                        <p className="text-gray-600">S/N: {robot.serial_number || '-'}</p>
+                        <p className="text-gray-600">Status: {robot.status || '-'}</p>
+                        <p className="text-gray-600">Battery: {robot.battery_level != null ? `${robot.battery_level}%` : '-'}</p>
                       </div>
                     </Popup>
                   </Marker>
@@ -171,6 +209,25 @@ export default function LiveOpsCenter() {
                 <p className="text-sm text-gray-400 text-center py-4">
                   No vehicles found
                 </p>
+              )}
+            </div>
+          </div>
+
+          {/* Robot List */}
+          <div className="flex-1 overflow-y-auto p-4 border-b border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Robots</h3>
+            <div className="space-y-2">
+              {robots.map((r) => (
+                <div key={r.id} className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{r.name}</p>
+                    <p className="text-xs text-gray-500">{r.serial_number || '-'}{r.battery_level != null ? ` | ${r.battery_level}%` : ''}</p>
+                  </div>
+                  <AlertBadge status={r.status} />
+                </div>
+              ))}
+              {robots.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">No robots found</p>
               )}
             </div>
           </div>
