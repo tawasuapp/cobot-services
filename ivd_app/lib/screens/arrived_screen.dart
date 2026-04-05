@@ -88,11 +88,12 @@ class ArrivedScreen extends StatelessWidget {
               IvdButton(
                 label: 'CONTINUE ON MOBILE APP',
                 icon: Icons.phone_android,
-                onPressed: () {
-                  if (job != null) {
-                    jobProvider.completeJob(job.id);
+                onPressed: () async {
+                  // Don't mark completed — the mobile app handles the full flow.
+                  // Just go back to home for the next job.
+                  if (context.mounted) {
+                    Navigator.of(context).pushReplacementNamed('/home');
                   }
-                  Navigator.of(context).pushReplacementNamed('/home');
                 },
                 backgroundColor: IvdTheme.primaryBlue,
                 minHeight: 68,
