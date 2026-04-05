@@ -8,10 +8,9 @@ import 'providers/auth_provider.dart';
 import 'providers/job_provider.dart';
 import 'providers/location_provider.dart';
 import 'screens/camera_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/job_detail_screen.dart';
-import 'screens/job_list_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/main_shell.dart';
 import 'screens/qr_scanner_screen.dart';
 import 'screens/report_upload_screen.dart';
 import 'services/notification_service.dart';
@@ -48,8 +47,7 @@ class CobotApp extends StatelessWidget {
         home: const _AuthGate(),
         routes: {
           '/login': (_) => const LoginScreen(),
-          '/home': (_) => const HomeScreen(),
-          '/jobs': (_) => const JobListScreen(),
+          '/home': (_) => const MainShell(),
           '/job-detail': (_) => const JobDetailScreen(),
           '/qr-scanner': (_) => const QrScannerScreen(),
           '/camera': (_) => const CameraScreen(),
@@ -111,6 +109,6 @@ class _AuthGateState extends State<_AuthGate> {
     }
 
     final auth = context.watch<AuthProvider>();
-    return auth.isLoggedIn ? const HomeScreen() : const LoginScreen();
+    return auth.isLoggedIn ? const MainShell() : const LoginScreen();
   }
 }

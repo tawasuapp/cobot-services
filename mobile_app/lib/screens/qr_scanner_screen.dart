@@ -32,6 +32,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     super.dispose();
   }
 
+  String _getInstruction() {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['instruction'] != null) {
+      return args['instruction'] as String;
+    }
+    return 'Point the camera at a QR code to scan';
+  }
+
   Future<void> _handleIvdLogin(String sessionId) async {
     try {
       await ApiService().post(
@@ -95,21 +103,28 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       return;
     }
 
-    // Send to backend for job-related QR
+    // Extract job and scanType from arguments
+    // Arguments can be: Job, Map{job, scanType, instruction}, or null
+    final args = ModalRoute.of(context)?.settings.arguments;
+    Job? job;
+    String? scanType;
+    if (args is Job) {
+      job = args;
+    } else if (args is Map) {
+      job = args['job'] as Job?;
+      scanType = args['scanType'] as String?;
+    }
+
+    // Send to backend
     try {
-      final job = ModalRoute.of(context)?.settings.arguments as Job?;
       await ApiService().post(
         ApiConfig.qrScan,
         data: {
           'qrData': rawData,
           'jobId': job?.id,
-          'scanType': result.type,
+          'scanType': scanType ?? result.type,
         },
       );
-
-      if (job != null && mounted) {
-        await context.read<JobProvider>().updateJobStatus(job.id, 'in_progress');
-      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -182,8 +197,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                'Point the camera at the customer QR code to verify your arrival',
+              child: Text(
+                _getInstruction(),
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white, fontSize: 14),
               ),
