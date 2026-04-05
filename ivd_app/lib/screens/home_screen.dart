@@ -32,35 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _skipJob(Job job) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: IvdTheme.surfaceDark,
-        title: const Text('Skip Job?', style: TextStyle(fontSize: 22)),
-        content: Text(
-          'Skip ${job.customer.name}?',
-          style: const TextStyle(fontSize: 18),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('CANCEL', style: TextStyle(fontSize: 18)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'SKIP',
-              style: TextStyle(fontSize: 18, color: IvdTheme.warningOrange),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      context.read<JobProvider>().skipJob(job.id);
-    }
-  }
+  // No skip — once a trip is assigned, it must be completed
 
   @override
   Widget build(BuildContext context) {
@@ -256,20 +228,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 _startDriving(currentJob),
                                             backgroundColor:
                                                 IvdTheme.successGreen,
-                                            minHeight: 64,
-                                            fontSize: 20,
-                                            expanded: true,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: IvdButton(
-                                            label: 'SKIP JOB',
-                                            icon: Icons.skip_next,
-                                            onPressed: () =>
-                                                _skipJob(currentJob),
-                                            backgroundColor:
-                                                IvdTheme.warningOrange,
                                             minHeight: 64,
                                             fontSize: 20,
                                             expanded: true,
