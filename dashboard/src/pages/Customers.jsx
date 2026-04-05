@@ -30,6 +30,9 @@ const EMPTY_FORM = {
   longitude: '',
   partner_tier: 'standard',
   portal_password: '',
+  robots_required: 1,
+  robot_map: '',
+  non_robot_activities: '',
   notes: '',
 };
 
@@ -121,6 +124,9 @@ export default function Customers() {
       longitude: selected.longitude || '',
       partner_tier: selected.partner_tier || 'standard',
       portal_password: '',
+      robots_required: selected.robots_required ?? 1,
+      robot_map: selected.robot_map || '',
+      non_robot_activities: selected.non_robot_activities || '',
       notes: selected.notes || '',
     });
     setEditing(true);
@@ -288,6 +294,22 @@ export default function Customers() {
                 </div>
               </div>
 
+              {/* Robot & Activity details */}
+              <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+                <div className="text-sm text-gray-600">
+                  <span className="text-gray-400">Robots Required:</span>{' '}
+                  {selected.robots_required ?? 'N/A'}
+                </div>
+                <div className="text-sm text-gray-600">
+                  <span className="text-gray-400">Robot Map:</span>{' '}
+                  {selected.robot_map || 'N/A'}
+                </div>
+                <div className="col-span-2 text-sm text-gray-600">
+                  <span className="text-gray-400">Non-Robot Activities:</span>{' '}
+                  {selected.non_robot_activities || 'N/A'}
+                </div>
+              </div>
+
               {/* Metric cards */}
               <div className="grid grid-cols-3 gap-4">
                 <KPICard
@@ -438,6 +460,35 @@ export default function Customers() {
                 />
               </div>
             )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Robots Required</label>
+            <input
+              type="number"
+              min={0}
+              value={form.robots_required}
+              onChange={(e) => setForm({ ...form, robots_required: parseInt(e.target.value, 10) || 0 })}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Robot Map / Floor Plan Notes</label>
+            <textarea
+              rows={2}
+              value={form.robot_map}
+              onChange={(e) => setForm({ ...form, robot_map: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Non-Robot Activities Required</label>
+            <textarea
+              rows={2}
+              value={form.non_robot_activities}
+              onChange={(e) => setForm({ ...form, non_robot_activities: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           <div>
