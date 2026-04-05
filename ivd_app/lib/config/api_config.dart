@@ -8,6 +8,7 @@ class ApiConfig {
 
   // Endpoints
   static const String login = '/auth/login';
+  static const String ivdSession = '/auth/ivd-session';
   static const String jobs = '/jobs';
   static const String jobArrive = '/jobs/{id}/arrive';
   static const String jobStatus = '/jobs/{id}/status';

@@ -1,6 +1,10 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User, Customer } = require('../models');
+
+// In-memory store for IVD login sessions
+const ivdSessions = new Map();
 
 function generateToken(payload) {
   return jwt.sign(payload, process.env.JWT_SECRET, {
@@ -107,4 +111,65 @@ async function updateFcmToken(req, res, next) {
   }
 }
 
-module.exports = { login, customerLogin, getMe, refreshToken, logout, updateFcmToken };
+// --- IVD QR Code Login ---
+
+function cleanExpiredIvdSessions() {
+  const now = Date.now();
+  for (const [id, session] of ivdSessions) {
+    if (now - session.createdAt > 5 * 60 * 1000) ivdSessions.delete(id);
+  }
+}
+
+async function createIvdSession(req, res) {
+  cleanExpiredIvdSessions();
+  const sessionId = crypto.randomUUID();
+  ivdSessions.set(sessionId, { status: 'pending', createdAt: Date.now() });
+  res.json({ sessionId });
+}
+
+async function approveIvdSession(req, res) {
+  const { sessionId } = req.body;
+  if (!sessionId) {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+  const session = ivdSessions.get(sessionId);
+  if (!session || session.status !== 'pending') {
+    return res.status(404).json({ error: 'Invalid or expired session' });
+  }
+  // Create a new JWT for the IVD using the authenticated user's info
+  const token = generateToken({ id: req.user.id, role: req.user.role });
+  session.status = 'approved';
+  session.token = token;
+  session.user = {
+    id: req.user.id,
+    email: req.user.email,
+    first_name: req.user.first_name,
+    last_name: req.user.last_name,
+    role: req.user.role,
+  };
+  res.json({ message: 'Session approved' });
+}
+
+async function checkIvdSession(req, res) {
+  const session = ivdSessions.get(req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  if (session.status === 'approved') {
+    ivdSessions.delete(req.params.sessionId); // One-time use
+    return res.json({ status: 'approved', token: session.token, user: session.user });
+  }
+  res.json({ status: 'pending' });
+}
+
+module.exports = {
+  login,
+  customerLogin,
+  getMe,
+  refreshToken,
+  logout,
+  updateFcmToken,
+  createIvdSession,
+  approveIvdSession,
+  checkIvdSession,
+};
