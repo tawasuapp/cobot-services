@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:346801482732:android:0d35992c469feccb8a6ec9",
+        "android_client_info": {
+          "package_name": "com.powerweb.cobotivd"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWSsIdNDWjgxrkp8wEMYxvF3fXLB2rf6Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:346801482732:android:77428262aeef493f8a6ec9",
         "android_client_info": {
           "package_name": "com.powerweb.cobotoperator"

@@ -1,4 +1,4 @@
-package qa.cobot.cobot_ivd
+package com.powerweb.cobotoperator
 
 import io.flutter.embedding.android.FlutterActivity
 

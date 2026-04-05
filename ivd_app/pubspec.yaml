@@ -1,5 +1,5 @@
-name: cobot_ivd
-description: "Cobot Services - In-Vehicle Display App (Android, 1600x600)"
+name: cobotivd
+description: "Cobot IVD - In-Vehicle Display App (Android, 1600x600)"
 publish_to: 'none'
 version: 1.0.0+1
 
