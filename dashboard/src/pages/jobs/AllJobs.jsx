@@ -8,6 +8,7 @@ import AlertBadge from '../../components/common/AlertBadge';
 import Modal from '../../components/common/Modal';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { formatDate, formatTime } from '../../utils/helpers';
+import JobDetailModal from '../../components/common/JobDetailModal';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -59,6 +60,7 @@ export default function AllJobs() {
   const [vehicles, setVehicles] = useState([]);
   const [robots, setRobots] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [viewJobId, setViewJobId] = useState(null);
 
   const fetchJobs = useCallback(async (page = 1) => {
     setLoading(true);
@@ -223,7 +225,7 @@ export default function AllJobs() {
           <button onClick={() => fetchJobs(1)} className="p-2 text-gray-400 hover:text-gray-700"><RefreshCw size={16} /></button>
         </div>
 
-        <DataTable columns={columns} data={jobs} pagination={pagination} onPageChange={(p) => fetchJobs(p)} />
+        <DataTable columns={columns} data={jobs} pagination={pagination} onPageChange={(p) => fetchJobs(p)} onRowClick={(row) => setViewJobId(row.id)} />
       </div>
 
       {/* Create / Edit Job Modal */}
@@ -324,6 +326,12 @@ export default function AllJobs() {
           </div>
         </form>
       </Modal>
+
+      <JobDetailModal
+        isOpen={!!viewJobId}
+        onClose={() => setViewJobId(null)}
+        jobId={viewJobId}
+      />
     </div>
   );
 }
