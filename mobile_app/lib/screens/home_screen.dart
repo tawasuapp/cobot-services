@@ -33,7 +33,44 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = auth.currentUser;
     final theme = Theme.of(context);
 
+    // Show Scan FAB if current job is at a scan step
+    final activeJob = jobs.currentJob;
+    Widget? scanFab;
+    if (activeJob != null && (activeJob.status == 'arrived' || activeJob.status == 'in_progress')) {
+      String? label;
+      Color? color;
+      String? scanType;
+      String? instruction;
+
+      if (activeJob.status == 'arrived') {
+        label = 'Scan Customer QR';
+        color = Colors.indigo;
+        scanType = 'customer_location';
+        instruction = 'Scan the QR code at the customer location';
+      } else if (activeJob.status == 'in_progress') {
+        label = 'Scan Robot QR';
+        color = Colors.teal;
+        scanType = 'robot_deploy';
+        instruction = 'Scan the robot QR code';
+      }
+
+      if (label != null) {
+        scanFab = FloatingActionButton.extended(
+          onPressed: () => Navigator.of(context).pushNamed('/qr-scanner', arguments: {
+            'job': activeJob,
+            'scanType': scanType,
+            'instruction': instruction,
+          }),
+          icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+          label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+        );
+      }
+    }
+
     return Scaffold(
+      floatingActionButton: scanFab,
       body: RefreshIndicator(
         onRefresh: () async {
           await jobs.fetchTodaysJobs();
