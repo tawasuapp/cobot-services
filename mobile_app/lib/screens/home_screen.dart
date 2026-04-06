@@ -312,15 +312,13 @@ class _ActiveJobCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
                 children: [
                   _InfoChip(Icons.schedule, job.formattedTime),
-                  const SizedBox(width: 12),
                   if (job.robot != null) _InfoChip(Icons.smart_toy, job.robot.name ?? ''),
-                  if (job.vehicle != null) ...[
-                    const SizedBox(width: 12),
-                    _InfoChip(Icons.local_shipping, job.vehicle.plateNumber ?? ''),
-                  ],
+                  if (job.vehicle != null) _InfoChip(Icons.local_shipping, job.vehicle.plateNumber ?? ''),
                 ],
               ),
               if (job.customer?.address != null && job.customer.address.isNotEmpty) ...[
