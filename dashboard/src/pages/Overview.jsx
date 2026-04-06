@@ -14,6 +14,7 @@ import KPICard from '../components/common/KPICard';
 import AlertBadge from '../components/common/AlertBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatCurrency, formatTime, timeAgo } from '../utils/helpers';
+import JobDetailModal from '../components/common/JobDetailModal';
 
 const STATUS_COLORS = {
   scheduled: '#3b82f6',
@@ -33,6 +34,7 @@ export default function Overview() {
   const [todaysJobs, setTodaysJobs] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedJobId, setSelectedJobId] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -221,7 +223,7 @@ export default function Overview() {
                 <div className="text-center py-8 text-gray-400 text-sm">No jobs scheduled for today</div>
               ) : (
                 todaysJobs.map(job => (
-                  <Link key={job.id} to="/jobs" className={`flex items-center gap-3 p-3 rounded-xl transition-colors cursor-pointer ${job.status === 'completed' ? 'bg-gray-50 opacity-60' : 'bg-gray-50/50 hover:bg-blue-50'}`}>
+                  <div key={job.id} onClick={() => setSelectedJobId(job.id)} className={`flex items-center gap-3 p-3 rounded-xl transition-colors cursor-pointer ${job.status === 'completed' ? 'bg-gray-50 opacity-60' : 'bg-gray-50/50 hover:bg-blue-50'}`}>
                     <div className={`w-1 h-10 rounded-full ${job.status === 'completed' ? 'bg-green-400' : job.status === 'in_progress' ? 'bg-orange-400' : 'bg-blue-400'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${job.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
@@ -230,7 +232,7 @@ export default function Overview() {
                       <p className="text-xs text-gray-500">{job.service_type} {job.scheduled_time ? `at ${formatTime(job.scheduled_time)}` : ''}</p>
                     </div>
                     <AlertBadge status={job.status} />
-                  </Link>
+                  </div>
                 ))
               )}
             </div>
@@ -280,6 +282,12 @@ export default function Overview() {
           </div>
         </div>
       </div>
+
+      <JobDetailModal
+        isOpen={!!selectedJobId}
+        onClose={() => setSelectedJobId(null)}
+        jobId={selectedJobId}
+      />
     </div>
   );
 }
