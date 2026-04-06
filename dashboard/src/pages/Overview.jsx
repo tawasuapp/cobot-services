@@ -257,16 +257,24 @@ export default function Overview() {
               <p className="text-sm text-gray-400 col-span-2 text-center py-4">No recent activity</p>
             ) : (
               recentActivity.slice(0, 8).map((entry, i) => {
-                const entityLink = entry.entity_type === 'job' ? '/jobs'
-                  : entry.entity_type === 'invoice' ? '/finance'
+                const isJob = entry.entity_type === 'job' && entry.entity_id;
+                const entityLink = !isJob ? (
+                  entry.entity_type === 'invoice' ? '/finance'
                   : entry.entity_type === 'robot' ? '/robots'
                   : entry.entity_type === 'vehicle' ? '/vehicles'
                   : entry.entity_type === 'customer' ? '/customers'
-                  : null;
+                  : null
+                ) : null;
+
+                const handleClick = isJob
+                  ? () => setSelectedJobId(entry.entity_id)
+                  : undefined;
+
                 const Wrapper = entityLink ? Link : 'div';
                 const wrapperProps = entityLink ? { to: entityLink } : {};
+
                 return (
-                  <Wrapper key={entry.id || i} {...wrapperProps} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer">
+                  <Wrapper key={entry.id || i} {...wrapperProps} onClick={handleClick} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer">
                     <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <TrendingUp size={14} className="text-blue-600" />
                     </div>
