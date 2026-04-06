@@ -39,7 +39,7 @@ export default function Overview() {
       const [overviewRes, revenueRes, jobsAnalyticsRes, jobsRes, activityRes] =
         await Promise.all([
           api.get('/analytics/overview'),
-          api.get('/analytics/revenue'),
+          api.get('/analytics/revenue', { params: { months: 12 } }),
           api.get('/analytics/jobs'),
           api.get('/jobs/today'),
           api.get('/activity', { params: { limit: 10 } }),
@@ -47,7 +47,7 @@ export default function Overview() {
 
       setKpis(overviewRes.data);
       setRevenue((revenueRes.data || []).map(r => ({
-        month: r.month ? new Date(r.month).toLocaleDateString('en', { month: 'short' }) : '',
+        month: r.month ? new Date(r.month).toLocaleDateString('en', { month: 'short', year: '2-digit' }) : '',
         total: parseFloat(r.total) || 0,
       })));
       setJobStats(jobsAnalyticsRes.data || { by_status: [], weekly: [] });
@@ -143,7 +143,7 @@ export default function Overview() {
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-900">Revenue Trend</h3>
-              <span className="text-xs text-gray-400">Last 6 months</span>
+              <span className="text-xs text-gray-400">Last 12 months</span>
             </div>
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={revenue}>
