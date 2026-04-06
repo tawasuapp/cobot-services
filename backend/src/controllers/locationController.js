@@ -9,6 +9,16 @@ async function updateLocation(req, res, next) {
       return res.status(400).json({ error: 'entity_type, entity_id, lat, and lng are required' });
     }
 
+    if (!['vehicle', 'robot', 'user'].includes(entity_type)) {
+      return res.status(400).json({ error: 'entity_type must be vehicle, robot, or user' });
+    }
+
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (isNaN(latNum) || isNaN(lngNum) || latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+      return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+
     await locationService.updateLocation({
       entityType: entity_type,
       entityId: entity_id,
