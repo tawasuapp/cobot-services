@@ -19,6 +19,7 @@ import AlertBadge from '../components/common/AlertBadge';
 import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/helpers';
+import QRCodeModal from '../components/common/QRCodeModal';
 
 const EMPTY_FORM = {
   company_name: '',
@@ -153,15 +154,11 @@ export default function Customers() {
     }
   };
 
-  const handleGenerateQR = async () => {
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+
+  const handleGenerateQR = () => {
     if (!selected) return;
-    try {
-      const res = await api.post(`/customers/${selected.id}/qr`);
-      toast.success('QR code generated');
-      if (res.data?.url) window.open(res.data.url, '_blank');
-    } catch (err) {
-      toast.error('Failed to generate QR code');
-    }
+    setQrModalOpen(true);
   };
 
   const activeJobs = customerJobs.filter((j) => j.status === 'in_progress' || j.status === 'assigned');
@@ -518,6 +515,14 @@ export default function Customers() {
           </div>
         </form>
       </Modal>
+
+      <QRCodeModal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        entityType="customer"
+        entityId={selected?.id}
+        entityName={selected?.company_name}
+      />
     </div>
   );
 }

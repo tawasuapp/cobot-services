@@ -18,6 +18,7 @@ import AlertBadge from '../components/common/AlertBadge';
 import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatDate } from '../utils/helpers';
+import QRCodeModal from '../components/common/QRCodeModal';
 
 const EMPTY_FORM = {
   serial_number: '',
@@ -130,15 +131,11 @@ export default function Robots() {
     }
   };
 
-  const handleGenerateQR = async () => {
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+
+  const handleGenerateQR = () => {
     if (!selected) return;
-    try {
-      const res = await api.post(`/robots/${selected.id}/qr`);
-      toast.success('QR code generated');
-      if (res.data?.url) window.open(res.data.url, '_blank');
-    } catch (err) {
-      toast.error('Failed to generate QR code');
-    }
+    setQrModalOpen(true);
   };
 
   const handleScheduleMaintenance = () => {
@@ -493,6 +490,14 @@ export default function Robots() {
           </div>
         </form>
       </Modal>
+
+      <QRCodeModal
+        isOpen={qrModalOpen}
+        onClose={() => setQrModalOpen(false)}
+        entityType="robot"
+        entityId={selected?.id}
+        entityName={selected?.name}
+      />
     </div>
   );
 }
