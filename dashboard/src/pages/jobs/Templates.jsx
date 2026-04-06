@@ -6,6 +6,7 @@ import {
   Bot,
   BarChart3,
   Tag,
+  Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -55,10 +56,11 @@ export default function Templates() {
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Create modal
+  // Create/Edit modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState(INITIAL_CREATE_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
 
   // Use template modal
   const [showUseModal, setShowUseModal] = useState(false);
@@ -95,9 +97,25 @@ export default function Templates() {
     }
   }, []);
 
-  // Create template
+  // Create / Edit template
   const openCreateModal = () => {
     setCreateForm(INITIAL_CREATE_FORM);
+    setEditingTemplate(null);
+    setShowCreateModal(true);
+  };
+
+  const openEditModal = (template) => {
+    setCreateForm({
+      name: template.name || '',
+      category: template.category || 'interior',
+      service_type: template.service_type || '',
+      pricing_model: template.pricing_model || 'fixed_price',
+      base_price: template.base_price || '',
+      estimated_duration_minutes: template.estimated_duration_minutes || '',
+      robots_required: template.robots_required || '',
+      description: template.description || '',
+    });
+    setEditingTemplate(template);
     setShowCreateModal(true);
   };
 
@@ -109,13 +127,18 @@ export default function Templates() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await api.post('/templates', createForm);
-      toast.success('Template created successfully');
+      if (editingTemplate) {
+        await api.put(`/templates/${editingTemplate.id}`, createForm);
+        toast.success('Template updated');
+      } else {
+        await api.post('/templates', createForm);
+        toast.success('Template created');
+      }
       setShowCreateModal(false);
+      setEditingTemplate(null);
       fetchTemplates();
     } catch (err) {
-      console.error('Failed to create template', err);
-      toast.error(err.response?.data?.message || 'Failed to create template');
+      toast.error(err.response?.data?.error || 'Failed to save template');
     } finally {
       setSubmitting(false);
     }
@@ -232,13 +255,22 @@ export default function Templates() {
                   <span className="text-xs text-gray-400">
                     Used {template.usage_count || 0} time{(template.usage_count || 0) !== 1 ? 's' : ''}
                   </span>
-                  <button
-                    onClick={() => openUseModal(template)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <Play size={12} />
-                    Use Template
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEditModal(template)}
+                      className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50"
+                      title="Edit"
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      onClick={() => openUseModal(template)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                      <Play size={12} />
+                      Use
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -250,7 +282,7 @@ export default function Templates() {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create Template"
+        title={editingTemplate ? 'Edit Template' : 'Create Template'}
         size="lg"
       >
         <form onSubmit={handleCreateTemplate} className="space-y-4">
@@ -395,7 +427,7 @@ export default function Templates() {
               disabled={submitting}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {submitting ? 'Creating...' : 'Create Template'}
+              {submitting ? 'Saving...' : editingTemplate ? 'Update Template' : 'Create Template'}
             </button>
           </div>
         </form>
