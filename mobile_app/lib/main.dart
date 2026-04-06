@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import 'config/theme.dart';
@@ -11,6 +12,7 @@ import 'screens/camera_screen.dart';
 import 'screens/job_detail_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_shell.dart';
+import 'screens/permissions_screen.dart';
 import 'screens/qr_scanner_screen.dart';
 import 'screens/report_upload_screen.dart';
 import 'services/notification_service.dart';
@@ -18,7 +20,6 @@ import 'services/notification_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase is optional — push notifications won't work without google-services.json
   try {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(firebaseBackgroundHandler);
@@ -41,10 +42,10 @@ class CobotApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LocationProvider()),
       ],
       child: MaterialApp(
-        title: 'Cobot Services',
+        title: 'Cobot Operator',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const _AuthGate(),
+        home: const _AppGate(),
         routes: {
           '/login': (_) => const LoginScreen(),
           '/home': (_) => const MainShell(),
@@ -58,23 +59,46 @@ class CobotApp extends StatelessWidget {
   }
 }
 
-class _AuthGate extends StatefulWidget {
-  const _AuthGate();
+/// First checks permissions, then checks auth.
+class _AppGate extends StatefulWidget {
+  const _AppGate();
 
   @override
-  State<_AuthGate> createState() => _AuthGateState();
+  State<_AppGate> createState() => _AppGateState();
 }
 
-class _AuthGateState extends State<_AuthGate> {
-  bool _initialized = false;
+class _AppGateState extends State<_AppGate> {
+  bool _permissionsGranted = false;
+  bool _authChecked = false;
 
   @override
   void initState() {
     super.initState();
-    _initApp();
+    _checkPermissionsQuickly();
   }
 
-  Future<void> _initApp() async {
+  Future<void> _checkPermissionsQuickly() async {
+    // Quick check — if all granted, skip the screen
+    final loc = await Permission.locationWhenInUse.isGranted;
+    final cam = await Permission.camera.isGranted;
+    final notif = await Permission.notification.isGranted;
+
+    if (mounted) {
+      if (loc && cam && notif) {
+        setState(() => _permissionsGranted = true);
+        _initAuth();
+      } else {
+        setState(() => _permissionsGranted = false);
+      }
+    }
+  }
+
+  void _onPermissionsGranted() {
+    setState(() => _permissionsGranted = true);
+    _initAuth();
+  }
+
+  Future<void> _initAuth() async {
     final auth = context.read<AuthProvider>();
     await auth.tryAutoLogin();
 
@@ -85,7 +109,6 @@ class _AuthGateState extends State<_AuthGate> {
         debugPrint('Notification init skipped: $e');
       }
       if (mounted) {
-        // Track location as this user (operator)
         final locProvider = context.read<LocationProvider>();
         locProvider.entityType = 'user';
         locProvider.entityId = auth.currentUser?.id;
@@ -93,19 +116,17 @@ class _AuthGateState extends State<_AuthGate> {
       }
     }
 
-    if (mounted) {
-      setState(() => _initialized = true);
-    }
+    if (mounted) setState(() => _authChecked = true);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_initialized) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+    if (!_permissionsGranted) {
+      return PermissionsScreen(onAllGranted: _onPermissionsGranted);
+    }
+
+    if (!_authChecked) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final auth = context.watch<AuthProvider>();
