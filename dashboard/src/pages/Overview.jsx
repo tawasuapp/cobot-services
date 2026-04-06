@@ -221,7 +221,7 @@ export default function Overview() {
                 <div className="text-center py-8 text-gray-400 text-sm">No jobs scheduled for today</div>
               ) : (
                 todaysJobs.map(job => (
-                  <div key={job.id} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${job.status === 'completed' ? 'bg-gray-50 opacity-60' : 'bg-gray-50/50 hover:bg-gray-100'}`}>
+                  <Link key={job.id} to="/jobs" className={`flex items-center gap-3 p-3 rounded-xl transition-colors cursor-pointer ${job.status === 'completed' ? 'bg-gray-50 opacity-60' : 'bg-gray-50/50 hover:bg-blue-50'}`}>
                     <div className={`w-1 h-10 rounded-full ${job.status === 'completed' ? 'bg-green-400' : job.status === 'in_progress' ? 'bg-orange-400' : 'bg-blue-400'}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium truncate ${job.status === 'completed' ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
@@ -230,7 +230,7 @@ export default function Overview() {
                       <p className="text-xs text-gray-500">{job.service_type} {job.scheduled_time ? `at ${formatTime(job.scheduled_time)}` : ''}</p>
                     </div>
                     <AlertBadge status={job.status} />
-                  </div>
+                  </Link>
                 ))
               )}
             </div>
@@ -254,18 +254,28 @@ export default function Overview() {
             {recentActivity.length === 0 ? (
               <p className="text-sm text-gray-400 col-span-2 text-center py-4">No recent activity</p>
             ) : (
-              recentActivity.slice(0, 8).map((entry, i) => (
-                <div key={entry.id || i} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <TrendingUp size={14} className="text-blue-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm text-gray-800 font-medium truncate">{entry.action?.replace(/_/g, ' ')}</p>
-                    <p className="text-xs text-gray-500 truncate">{entry.description}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{timeAgo(entry.created_at || entry.createdAt)}</p>
-                  </div>
-                </div>
-              ))
+              recentActivity.slice(0, 8).map((entry, i) => {
+                const entityLink = entry.entity_type === 'job' ? '/jobs'
+                  : entry.entity_type === 'invoice' ? '/finance'
+                  : entry.entity_type === 'robot' ? '/robots'
+                  : entry.entity_type === 'vehicle' ? '/vehicles'
+                  : entry.entity_type === 'customer' ? '/customers'
+                  : null;
+                const Wrapper = entityLink ? Link : 'div';
+                const wrapperProps = entityLink ? { to: entityLink } : {};
+                return (
+                  <Wrapper key={entry.id || i} {...wrapperProps} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <TrendingUp size={14} className="text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-gray-800 font-medium truncate">{entry.action?.replace(/_/g, ' ')}</p>
+                      <p className="text-xs text-gray-500 truncate">{entry.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{timeAgo(entry.created_at || entry.createdAt)}</p>
+                    </div>
+                  </Wrapper>
+                );
+              })
             )}
           </div>
         </div>
