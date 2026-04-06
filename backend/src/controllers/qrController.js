@@ -28,6 +28,20 @@ async function processScan(req, res, next) {
       return res.status(404).json({ error: 'Invalid QR code - entity not found' });
     }
 
+    // Validate that the QR type matches the expected scan type
+    const validCombinations = {
+      'customer_location': ['customer_location'],
+      'robot_deploy': ['robot_deploy'],
+      'robot_return': ['robot_deploy', 'robot_return'], // robot QR used for both deploy and return
+      'vehicle_return': ['vehicle_return'],
+    };
+    const allowedQrTypes = validCombinations[scanType];
+    if (allowedQrTypes && !allowedQrTypes.includes(parsed.type)) {
+      return res.status(400).json({
+        error: `Wrong QR code. Expected ${scanType.replace('_', ' ')} QR, but scanned ${parsed.type.replace('_', ' ')} QR`,
+      });
+    }
+
     // Log the scan
     await QRScanLog.create({
       scanned_by: userId,
