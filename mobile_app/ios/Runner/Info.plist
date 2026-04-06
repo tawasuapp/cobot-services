@@ -26,6 +26,23 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- Background Location -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Cobot Operator needs your location to track deliveries and navigate to customer locations.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cobot Operator needs your location in the background to continuously track your delivery route and detect arrival at customer locations.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Cobot Operator needs your location to track your route even when the app is in the background.</string>
+	<key>NSMotionUsageDescription</key>
+	<string>Cobot Operator uses motion detection to optimize battery usage during location tracking.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
