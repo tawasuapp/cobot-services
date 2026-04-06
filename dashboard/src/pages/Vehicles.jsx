@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Wrench,
   UserX,
+  QrCode,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -18,6 +19,7 @@ import AlertBadge from '../components/common/AlertBadge';
 import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatDate } from '../utils/helpers';
+import QRCodeModal from '../components/common/QRCodeModal';
 
 const EMPTY_FORM = {
   plate_number: '',
@@ -39,6 +41,7 @@ export default function Vehicles() {
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewVehicle, setViewVehicle] = useState(null);
+  const [qrVehicle, setQrVehicle] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editing, setEditing] = useState(false);
 
@@ -201,6 +204,13 @@ export default function Vehicles() {
             title="Edit"
           >
             <Pencil size={15} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setQrVehicle(row); }}
+            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-purple-600"
+            title="Generate QR"
+          >
+            <QrCode size={15} />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleDelete(row); }}
@@ -431,6 +441,14 @@ export default function Vehicles() {
           </div>
         )}
       </Modal>
+
+      <QRCodeModal
+        isOpen={!!qrVehicle}
+        onClose={() => setQrVehicle(null)}
+        entityType="vehicle"
+        entityId={qrVehicle?.id}
+        entityName={qrVehicle?.name || qrVehicle?.plate_number}
+      />
     </div>
   );
 }
