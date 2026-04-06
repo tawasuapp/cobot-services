@@ -90,9 +90,10 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       floatingActionButton: scanAction != null
           ? FloatingActionButton.extended(
               onPressed: scanAction['onPressed'] as VoidCallback,
-              icon: const Icon(Icons.qr_code_scanner),
-              label: Text(scanAction['label'] as String),
+              icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+              label: Text(scanAction['label'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               backgroundColor: scanAction['color'] as Color?,
+              foregroundColor: Colors.white,
             )
           : null,
       body: SingleChildScrollView(
