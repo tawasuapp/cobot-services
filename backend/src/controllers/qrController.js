@@ -116,4 +116,26 @@ async function validateQR(req, res, next) {
   }
 }
 
-module.exports = { processScan, validateQR };
+async function getJobScanStatus(req, res, next) {
+  try {
+    const { jobId } = req.params;
+    const scans = await QRScanLog.findAll({
+      where: { job_id: jobId },
+      attributes: ['qr_type', 'scanned_at'],
+      order: [['scanned_at', 'ASC']],
+    });
+
+    const scannedTypes = scans.map(s => s.qr_type);
+    res.json({
+      customer_location: scannedTypes.includes('customer_location'),
+      robot_deploy: scannedTypes.includes('robot_deploy'),
+      robot_return: scannedTypes.includes('robot_return'),
+      vehicle_return: scannedTypes.includes('vehicle_return'),
+      scans: scans,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { processScan, validateQR, getJobScanStatus };
