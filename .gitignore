@@ -48,3 +48,4 @@ cobot-key.pem
 backend/firebase-admin-sdk.json
 cobot-sg-key.pem
 *.pem
+.secrets/
