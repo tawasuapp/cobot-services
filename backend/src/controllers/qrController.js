@@ -32,14 +32,30 @@ async function processScan(req, res, next) {
     const validCombinations = {
       'customer_location': ['customer_location'],
       'robot_deploy': ['robot_deploy'],
-      'robot_return': ['robot_deploy', 'robot_return'], // robot QR used for both deploy and return
+      'robot_return': ['robot_deploy', 'robot_return'],
       'vehicle_return': ['vehicle_return'],
     };
     const allowedQrTypes = validCombinations[scanType];
     if (allowedQrTypes && !allowedQrTypes.includes(parsed.type)) {
       return res.status(400).json({
-        error: `Wrong QR code. Expected ${scanType.replace('_', ' ')} QR, but scanned ${parsed.type.replace('_', ' ')} QR`,
+        error: `Wrong QR code. Expected ${scanType.replace(/_/g, ' ')} QR, but scanned ${parsed.type.replace(/_/g, ' ')} QR`,
       });
+    }
+
+    // Validate the scanned entity matches the job's assigned entity
+    if (jobId) {
+      const job = await Job.findByPk(jobId);
+      if (job) {
+        if (scanType === 'customer_location' && parsed.id !== job.customer_id) {
+          return res.status(400).json({ error: 'Wrong customer QR. This QR belongs to a different customer location.' });
+        }
+        if ((scanType === 'robot_deploy' || scanType === 'robot_return') && parsed.id !== job.assigned_robot_id) {
+          return res.status(400).json({ error: 'Wrong robot QR. This QR belongs to a different robot than the one assigned to this job.' });
+        }
+        if (scanType === 'vehicle_return' && parsed.id !== job.assigned_vehicle_id) {
+          return res.status(400).json({ error: 'Wrong vehicle QR. This QR belongs to a different vehicle than the one assigned to this job.' });
+        }
+      }
     }
 
     // Log the scan
