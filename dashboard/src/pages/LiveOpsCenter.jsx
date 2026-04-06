@@ -12,6 +12,7 @@ import AlertBadge from '../components/common/AlertBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useSocketEvent } from '../hooks/useSocket';
 import { timeAgo, formatTime } from '../utils/helpers';
+import JobDetailModal from '../components/common/JobDetailModal';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -64,6 +65,7 @@ export default function LiveOpsCenter() {
   const [selectedOperator, setSelectedOperator] = useState(null);
   const [sidebarTab, setSidebarTab] = useState('operators'); // operators | fleet | feed
   const [showCustomers, setShowCustomers] = useState(true);
+  const [viewJobId, setViewJobId] = useState(null);
   const [showTrails, setShowTrails] = useState(true);
   const mapRef = useRef(null);
 
@@ -466,7 +468,11 @@ export default function LiveOpsCenter() {
             {sidebarTab === 'feed' && (
               <div className="p-3 space-y-2">
                 {activity.map((entry, i) => (
-                  <div key={entry.id || i} className="border-l-2 border-gray-200 pl-3 py-1.5 hover:bg-gray-50 rounded-r-lg">
+                  <div
+                    key={entry.id || i}
+                    onClick={() => entry.entity_type === 'job' && entry.entity_id && setViewJobId(entry.entity_id)}
+                    className={`border-l-2 border-gray-200 pl-3 py-1.5 rounded-r-lg ${entry.entity_type === 'job' && entry.entity_id ? 'hover:bg-blue-50 cursor-pointer' : 'hover:bg-gray-50'}`}
+                  >
                     <p className="text-sm text-gray-800 font-medium">{entry.action?.replace(/_/g, ' ')}</p>
                     <p className="text-xs text-gray-500">{entry.description}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{timeAgo(entry.created_at || entry.createdAt || entry.timestamp)}</p>
@@ -480,6 +486,12 @@ export default function LiveOpsCenter() {
           </div>
         </div>
       </div>
+
+      <JobDetailModal
+        isOpen={!!viewJobId}
+        onClose={() => setViewJobId(null)}
+        jobId={viewJobId}
+      />
     </div>
   );
 }
