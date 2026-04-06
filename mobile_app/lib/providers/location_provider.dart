@@ -1,78 +1,83 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
 
 import '../services/api_service.dart';
-import '../services/location_service.dart';
 
 class LocationProvider extends ChangeNotifier {
-  final LocationService _locationService = LocationService();
   final ApiService _api = ApiService();
 
-  // ── CONFIGURABLE: Change this to adjust tracking frequency ──
-  static const Duration trackingInterval = Duration(seconds: 10);
-  // ────────────────────────────────────────────────────────────
+  // ── CONFIGURABLE ──
+  static const int trackingIntervalSeconds = 10;
+  // ──────────────────
 
-  Position? _currentPosition;
+  bg.Location? _currentLocation;
   bool _isTracking = false;
-  Timer? _trackingTimer;
 
-  /// Set these before calling startTracking()
-  String? entityType; // 'vehicle' or 'user'
+  String? entityType;
   String? entityId;
 
-  Position? get currentPosition => _currentPosition;
+  bg.Location? get currentLocation => _currentLocation;
   bool get isTracking => _isTracking;
 
+  double? get latitude => _currentLocation?.coords.latitude;
+  double? get longitude => _currentLocation?.coords.longitude;
+
   Future<void> startTracking() async {
-    final hasPermission = await _locationService.checkAndRequestPermission();
-    if (!hasPermission) {
-      debugPrint('Location permission denied');
+    if (entityType == null || entityId == null) {
+      debugPrint('BG Location: Cannot start — entityType/entityId not set');
       return;
     }
+
+    await bg.BackgroundGeolocation.ready(bg.Config(
+      desiredAccuracy: bg.Config.DESIRED_ACCURACY_HIGH,
+      distanceFilter: 0,
+      locationUpdateInterval: trackingIntervalSeconds * 1000,
+      fastestLocationUpdateInterval: trackingIntervalSeconds * 1000,
+      stopOnTerminate: false,
+      startOnBoot: true,
+      enableHeadless: true,
+      notification: bg.Notification(
+        title: 'Cobot Operator',
+        text: 'Tracking your location',
+        channelName: 'Location Tracking',
+        smallIcon: 'mipmap/ic_launcher',
+        sticky: true,
+        priority: bg.Config.NOTIFICATION_PRIORITY_LOW,
+      ),
+      foregroundService: true,
+      pausesLocationUpdatesAutomatically: false,
+      isMoving: true,
+      stopTimeout: 5,
+      autoSync: false,
+      debug: false,
+      logLevel: bg.Config.LOG_LEVEL_OFF,
+    ));
+
+    bg.BackgroundGeolocation.onLocation(_onLocation);
+    bg.BackgroundGeolocation.onMotionChange(_onMotionChange);
+
+    await bg.BackgroundGeolocation.start();
 
     _isTracking = true;
     notifyListeners();
-
-    // Get initial position immediately
-    await _captureAndSend();
-
-    // Then repeat at fixed interval
-    _trackingTimer?.cancel();
-    _trackingTimer = Timer.periodic(trackingInterval, (_) {
-      _captureAndSend();
-    });
+    debugPrint('BG Location: Started (interval: ${trackingIntervalSeconds}s, survives kill: true)');
   }
 
-  void stopTracking() {
-    _trackingTimer?.cancel();
-    _trackingTimer = null;
-    _isTracking = false;
+  void _onLocation(bg.Location location) {
+    _currentLocation = location;
     notifyListeners();
+    _sendLocationUpdate(location);
   }
 
-  Future<void> _captureAndSend() async {
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 8),
-        ),
-      );
-      _currentPosition = position;
-      notifyListeners();
-      await _sendLocationUpdate(position);
-    } catch (e) {
-      debugPrint('Location capture failed: $e');
-    }
+  void _onMotionChange(bg.Location location) {
+    debugPrint('BG Location: Motion change — isMoving: ${location.isMoving}');
+    _currentLocation = location;
+    notifyListeners();
+    _sendLocationUpdate(location);
   }
 
-  Future<void> _sendLocationUpdate(Position position) async {
-    if (entityType == null || entityId == null) {
-      debugPrint('Location update skipped: no entityType/entityId set');
-      return;
-    }
+  Future<void> _sendLocationUpdate(bg.Location location) async {
+    if (entityType == null || entityId == null) return;
 
     try {
       await _api.post(
@@ -80,31 +85,38 @@ class LocationProvider extends ChangeNotifier {
         data: {
           'entity_type': entityType,
           'entity_id': entityId,
-          'lat': position.latitude,
-          'lng': position.longitude,
-          'speed': position.speed,
-          'heading': position.heading,
-          'accuracy': position.accuracy,
+          'lat': location.coords.latitude,
+          'lng': location.coords.longitude,
+          'speed': location.coords.speed,
+          'heading': location.coords.heading,
+          'accuracy': location.coords.accuracy,
         },
       );
-      debugPrint('Location sent: ${position.latitude}, ${position.longitude}');
+      debugPrint('BG Location: Sent ${location.coords.latitude.toStringAsFixed(4)}, ${location.coords.longitude.toStringAsFixed(4)}');
     } catch (e) {
-      debugPrint('Location update failed: $e');
+      debugPrint('BG Location: Send failed: $e');
     }
   }
 
-  Future<Position?> getCurrentPosition() async {
-    final position = await _locationService.getCurrentPosition();
-    if (position != null) {
-      _currentPosition = position;
-      notifyListeners();
-    }
-    return position;
+  Future<void> stopTracking() async {
+    await bg.BackgroundGeolocation.stop();
+    _isTracking = false;
+    notifyListeners();
+    debugPrint('BG Location: Stopped');
   }
 
   @override
   void dispose() {
     stopTracking();
     super.dispose();
+  }
+}
+
+/// Headless task — runs on Android even after app is killed.
+@pragma('vm:entry-point')
+void backgroundGeolocationHeadlessTask(bg.HeadlessEvent headlessEvent) async {
+  if (headlessEvent.name == bg.Event.LOCATION) {
+    final location = headlessEvent.event as bg.Location;
+    debugPrint('BG Headless: ${location.coords.latitude}, ${location.coords.longitude}');
   }
 }
