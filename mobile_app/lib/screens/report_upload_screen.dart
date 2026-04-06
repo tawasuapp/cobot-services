@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../config/api_config.dart';
 import '../models/job.dart';
@@ -26,11 +27,51 @@ class _ReportUploadScreenState extends State<ReportUploadScreen> {
     super.dispose();
   }
 
+  final _picker = ImagePicker();
+
   Future<void> _captureImage() async {
     final result = await Navigator.of(context).pushNamed('/camera');
     if (result is String) {
       setState(() => _imagePath = result);
     }
+  }
+
+  Future<void> _pickFromGallery() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked != null) {
+      setState(() => _imagePath = picked.path);
+    }
+  }
+
+  void _showImageSourcePicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Select Image Source', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Colors.blue),
+                title: const Text('Take Photo'),
+                subtitle: const Text('Capture with camera'),
+                onTap: () { Navigator.pop(ctx); _captureImage(); },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Colors.green),
+                title: const Text('Choose from Gallery'),
+                subtitle: const Text('Pick an existing screenshot or photo'),
+                onTap: () { Navigator.pop(ctx); _pickFromGallery(); },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _uploadReport() async {
@@ -120,13 +161,13 @@ class _ReportUploadScreenState extends State<ReportUploadScreen> {
               ),
               const SizedBox(height: 8),
               TextButton.icon(
-                onPressed: _captureImage,
+                onPressed: _showImageSourcePicker,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Retake Photo'),
+                label: const Text('Change Photo'),
               ),
             ] else ...[
               GestureDetector(
-                onTap: _captureImage,
+                onTap: _showImageSourcePicker,
                 child: Container(
                   width: double.infinity,
                   height: 200,
@@ -139,14 +180,14 @@ class _ReportUploadScreenState extends State<ReportUploadScreen> {
                       strokeAlign: BorderSide.strokeAlignInside,
                     ),
                   ),
-                  child: const Column(
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.camera_alt, size: 48, color: Colors.grey),
-                      SizedBox(height: 8),
+                      Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 8),
                       Text(
-                        'Tap to capture photo',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
+                        'Take Photo or Choose from Gallery',
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                       ),
                     ],
                   ),
