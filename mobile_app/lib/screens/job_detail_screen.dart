@@ -53,6 +53,8 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
           _robotDeployed = data['robot_deploy'] == true;
           _robotReturned = data['robot_return'] == true;
           _vehicleQrScanned = data['vehicle_return'] == true;
+          // If robot was returned, report must have been uploaded
+          if (_robotReturned) _reportUploaded = true;
         });
       }
     } catch (_) {
