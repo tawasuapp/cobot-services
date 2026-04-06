@@ -40,12 +40,25 @@ async function getReport(req, res, next) {
 
 async function createReport(req, res, next) {
   try {
+    // Handle both multipart file upload and direct file_url
+    let fileUrl = req.body.file_url;
+    let fileType = req.body.file_type;
+
+    if (req.file) {
+      fileUrl = `/uploads/reports/${req.file.filename}`;
+      fileType = req.file.mimetype;
+    }
+
+    if (!fileUrl) {
+      return res.status(400).json({ error: 'File is required' });
+    }
+
     const data = {
       job_id: req.body.job_id,
       uploaded_by: req.user.id,
       report_type: req.body.report_type || 'cleaning_report',
-      file_url: req.body.file_url,
-      file_type: req.body.file_type,
+      file_url: fileUrl,
+      file_type: fileType,
       description: req.body.description,
     };
 
