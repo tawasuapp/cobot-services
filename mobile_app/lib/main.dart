@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_background_geolocation/flutter_background_geolocation.dart' as bg;
 import 'package:provider/provider.dart';
 
 import 'config/theme.dart';
@@ -26,9 +25,6 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Firebase init skipped: $e');
   }
-
-  // Register headless task for background location after app is killed (Android)
-  bg.BackgroundGeolocation.registerHeadlessTask(backgroundGeolocationHeadlessTask);
 
   runApp(const CobotApp());
 }

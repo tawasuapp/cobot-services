@@ -21,9 +21,8 @@ dependencies:
   shared_preferences: ^2.3.4
   flutter_secure_storage: ^9.2.3
 
-  # Location (foreground + background)
+  # Location
   geolocator: ^13.0.2
-  flutter_background_geolocation: ^4.17.3
 
   # Maps (for opening external maps)
   url_launcher: ^6.3.1
