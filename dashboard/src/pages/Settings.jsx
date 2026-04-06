@@ -178,7 +178,7 @@ export default function Settings() {
     <div className="flex flex-col h-full">
       <Header title="Settings" />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* Tab Navigation */}
         <div className="flex border-b border-gray-200">
           {TABS.map((tab) => {
@@ -226,7 +226,7 @@ export default function Settings() {
         {activeTab === 'notifications' && (
           <div className="space-y-6">
             {notificationGroups.map((group) => (
-              <div key={group.title} className="bg-white rounded-xl border border-gray-200 p-5">
+              <div key={group.title} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h3 className="text-sm font-semibold text-gray-800 mb-4">{group.title}</h3>
                 <div className="space-y-3">
                   {group.items.map((item) => (
@@ -254,7 +254,7 @@ export default function Settings() {
 
         {/* System Settings Tab */}
         {activeTab === 'system' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-semibold text-gray-800 mb-6">System Configuration</h3>
             <div className="space-y-5 max-w-lg">
               <div>

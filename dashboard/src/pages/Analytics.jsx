@@ -133,9 +133,9 @@ export default function Analytics() {
     <div className="flex flex-col h-full">
       <Header title="Analytics" />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {kpiCards.map((kpi) => (
             <KPICard key={kpi.title} title={kpi.title} value={kpi.value} icon={kpi.icon} color={kpi.color} />
           ))}
@@ -144,7 +144,7 @@ export default function Analytics() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Fleet Utilization */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-medium text-gray-700 mb-4">Fleet Utilization</h3>
             {fleetChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
@@ -174,7 +174,7 @@ export default function Analytics() {
           </div>
 
           {/* Jobs by Status */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-medium text-gray-700 mb-4">Jobs by Status</h3>
             {jobsByStatus.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>
@@ -204,7 +204,7 @@ export default function Analytics() {
         </div>
 
         {/* Top Customers by Revenue */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <h3 className="text-sm font-medium text-gray-700 mb-4">Top Customers by Revenue</h3>
           {topCustomers.length > 0 ? (
             <div className="space-y-3">

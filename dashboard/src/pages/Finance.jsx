@@ -232,9 +232,9 @@ export default function Finance() {
     <div className="flex flex-col h-full">
       <Header title="Finance" />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           {kpiCards.map((kpi) => (
             <KPICard key={kpi.title} title={kpi.title} value={kpi.value} icon={kpi.icon} color={kpi.color} />
           ))}
@@ -243,7 +243,7 @@ export default function Finance() {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Revenue Over Time */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-medium text-gray-700 mb-4">Revenue Over Time</h3>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={revenue}>
@@ -267,7 +267,7 @@ export default function Finance() {
           </div>
 
           {/* Revenue by Service Type */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <h3 className="text-sm font-medium text-gray-700 mb-4">Revenue by Service Type</h3>
             {revenueByService.length > 0 ? (
               <ResponsiveContainer width="100%" height={280}>

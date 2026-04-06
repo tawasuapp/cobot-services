@@ -222,7 +222,7 @@ export default function Robots() {
           ) : (
             <div className="space-y-6">
               {/* Robot info header */}
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">{selected.name}</h2>
@@ -244,7 +244,7 @@ export default function Robots() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
                   <div className="text-sm">
                     <span className="text-gray-400">Model:</span>{' '}
                     <span className="text-gray-700">{selected.model || 'N/A'}</span>
@@ -262,14 +262,14 @@ export default function Robots() {
 
               {/* Battery & Health */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <Battery size={18} className="text-gray-400" />
                     <span className="text-sm font-medium text-gray-700">Battery Level</span>
                   </div>
                   <BatteryBar level={selected.battery_level} />
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-3">
                     <Cpu size={18} className="text-gray-400" />
                     <span className="text-sm font-medium text-gray-700">Health Status</span>
@@ -280,7 +280,7 @@ export default function Robots() {
 
               {/* Stats */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-1">
                     <Clock size={16} className="text-gray-400" />
                     <span className="text-sm text-gray-500">Total Operational Hours</span>
@@ -289,7 +289,7 @@ export default function Robots() {
                     {selected.total_operational_hours ?? 'N/A'}
                   </p>
                 </div>
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-1">
                     <Briefcase size={16} className="text-gray-400" />
                     <span className="text-sm text-gray-500">Jobs Completed</span>
@@ -301,7 +301,7 @@ export default function Robots() {
               </div>
 
               {/* Maintenance dates */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Maintenance</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-sm">
@@ -324,7 +324,7 @@ export default function Robots() {
               </div>
 
               {/* QR Code */}
-              <div className="bg-white rounded-xl border border-gray-200 p-5">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900">QR Code</h3>
                   <button
@@ -347,7 +347,7 @@ export default function Robots() {
 
               {/* Assigned vehicle */}
               {selected.vehicle && (
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Truck size={16} className="text-gray-400" />
                     <h3 className="text-sm font-semibold text-gray-900">Assigned Vehicle</h3>
@@ -360,7 +360,7 @@ export default function Robots() {
 
               {/* Current job */}
               {selected.current_job && (
-                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                   <div className="flex items-center gap-2 mb-2">
                     <Briefcase size={16} className="text-gray-400" />
                     <h3 className="text-sm font-semibold text-gray-900">Current Job</h3>

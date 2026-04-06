@@ -117,7 +117,7 @@ export default function Alerts() {
     <div className="flex flex-col h-full">
       <Header title="Alerts" />
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* Filter Row */}
         <div className="flex flex-wrap items-center gap-3">
           <select
@@ -153,7 +153,7 @@ export default function Alerts() {
 
         {/* Alert Cards */}
         {filteredAlerts.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center text-gray-500">
             <Bell size={40} className="mx-auto mb-3 text-gray-300" />
             <p>No alerts found</p>
           </div>

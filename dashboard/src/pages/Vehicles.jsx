@@ -222,7 +222,7 @@ export default function Vehicles() {
 
       <div className="flex-1 overflow-y-auto bg-gray-50 p-6 space-y-6">
         {/* KPI Summary */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <KPICard title="Total Fleet" value={totalFleet} icon={Truck} color="blue" />
           <KPICard title="Active on Road" value={activeOnRoad} icon={Truck} color="green" />
           <KPICard title="In Maintenance" value={inMaintenance} icon={Wrench} color="orange" />
