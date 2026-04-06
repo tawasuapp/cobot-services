@@ -1,5 +1,9 @@
 function errorHandler(err, req, res, _next) {
-  console.error('Error:', err);
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Error:', err);
+  } else {
+    console.error('Error:', err.message);
+  }
 
   if (err.name === 'SequelizeValidationError') {
     const errors = err.errors.map((e) => ({ field: e.path, message: e.message }));
@@ -7,8 +11,7 @@ function errorHandler(err, req, res, _next) {
   }
 
   if (err.name === 'SequelizeUniqueConstraintError') {
-    const fields = Object.keys(err.fields || {});
-    return res.status(409).json({ error: `Duplicate value for: ${fields.join(', ')}` });
+    return res.status(409).json({ error: 'A record with this value already exists' });
   }
 
   if (err.name === 'SequelizeForeignKeyConstraintError') {
@@ -16,7 +19,7 @@ function errorHandler(err, req, res, _next) {
   }
 
   const statusCode = err.statusCode || 500;
-  const message = err.statusCode ? err.message : 'Internal server error';
+  const message = statusCode < 500 ? err.message : 'Internal server error';
 
   res.status(statusCode).json({ error: message });
 }
