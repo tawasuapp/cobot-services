@@ -1,37 +1,57 @@
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 let io = null;
 
 function initializeSocket(httpServer) {
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://admin.cobot.qa,https://app.cobot.qa').split(',');
+
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.SOCKET_CORS_ORIGIN || 'http://localhost:5173',
+      origin: allowedOrigins,
       methods: ['GET', 'POST'],
     },
   });
 
-  io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
+  // Authenticate socket connections via JWT
+  io.use((socket, next) => {
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (!token) {
+      return next(new Error('Authentication required'));
+    }
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      socket.userRole = decoded.role;
+      next();
+    } catch {
+      next(new Error('Invalid token'));
+    }
+  });
 
-    // Join dashboard room for supervisors/admins
+  io.on('connection', (socket) => {
+    // Auto-join user's own room
+    socket.join(`user:${socket.userId}`);
+
+    // Only admins/supervisors can join dashboard room
     socket.on('join:dashboard', () => {
-      socket.join('dashboard');
-      console.log(`${socket.id} joined dashboard room`);
+      if (['admin', 'supervisor'].includes(socket.userRole)) {
+        socket.join('dashboard');
+      }
     });
 
-    // Join operator-specific room
+    // Operators can only join their own room
     socket.on('join:operator', ({ operatorId }) => {
-      socket.join(`operator:${operatorId}`);
-      console.log(`${socket.id} joined operator:${operatorId} room`);
+      if (socket.userId === operatorId || ['admin', 'supervisor'].includes(socket.userRole)) {
+        socket.join(`operator:${operatorId}`);
+      }
     });
 
     socket.on('leave:operator', ({ operatorId }) => {
       socket.leave(`operator:${operatorId}`);
     });
 
-    // Handle location updates from IVD/mobile
     socket.on('location:update', (data) => {
-      // Broadcast to dashboard
       io.to('dashboard').emit('vehicle:location', {
         vehicleId: data.entityId,
         lat: data.lat,
@@ -42,9 +62,7 @@ function initializeSocket(httpServer) {
       });
     });
 
-    socket.on('disconnect', () => {
-      console.log(`Client disconnected: ${socket.id}`);
-    });
+    socket.on('disconnect', () => {});
   });
 
   return io;
