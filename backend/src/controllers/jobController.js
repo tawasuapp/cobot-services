@@ -1,7 +1,7 @@
 const { Job, Customer, User, Vehicle, Robot, Contract, JobTemplate } = require('../models');
 const { Op } = require('sequelize');
 const { paginateQuery, formatPaginatedResponse, generateJobNumber } = require('../utils/helpers');
-const { logActivity } = require('../services/notificationService');
+const { sendPushNotification, createAlert, logActivity } = require('../services/notificationService');
 const { getIO } = require('../config/socket');
 
 const jobIncludes = [
@@ -128,7 +128,12 @@ async function deleteJob(req, res, next) {
 
 async function updateJobStatus(req, res, next) {
   try {
-    const job = await Job.findByPk(req.params.id);
+    const job = await Job.findByPk(req.params.id, {
+      include: [
+        { model: Customer, attributes: ['id', 'company_name'] },
+        { model: User, as: 'operator', attributes: ['id', 'first_name', 'last_name', 'fcm_token'] },
+      ],
+    });
     if (!job) return res.status(404).json({ error: 'Job not found' });
 
     const oldStatus = job.status;
@@ -145,6 +150,25 @@ async function updateJobStatus(req, res, next) {
         timestamp: new Date(),
       });
     } catch { /* socket not ready */ }
+
+    // Send push notification to operator for key status changes
+    const operator = job.operator;
+    if (operator?.fcm_token) {
+      const customerName = job.Customer?.company_name || 'customer';
+      const notifications = {
+        'arrived': { title: "You've Arrived!", body: `Continue on mobile app for ${customerName}` },
+        'in_progress': { title: 'Job In Progress', body: `Robot deployed at ${customerName}` },
+        'completed': { title: 'Job Completed', body: `Great work! ${customerName} job is done` },
+      };
+      const notif = notifications[status];
+      if (notif) {
+        await sendPushNotification(operator.fcm_token, notif.title, notif.body, {
+          type: 'job_status_changed',
+          jobId: job.id,
+          status,
+        });
+      }
+    }
 
     await logActivity({
       userId: req.user.id,
@@ -176,6 +200,18 @@ async function assignJob(req, res, next) {
 
     await job.update(updates);
     const fullJob = await Job.findByPk(job.id, { include: jobIncludes });
+
+    // Notify operator of assignment
+    if (updates.assigned_operator_id) {
+      const operator = await User.findByPk(updates.assigned_operator_id);
+      if (operator?.fcm_token) {
+        const customer = await Customer.findByPk(job.customer_id);
+        await sendPushNotification(operator.fcm_token, 'New Job Assigned', `You have been assigned to ${customer?.company_name || 'a new job'}`, {
+          type: 'job_assigned',
+          jobId: job.id,
+        });
+      }
+    }
 
     await logActivity({
       userId: req.user.id,
