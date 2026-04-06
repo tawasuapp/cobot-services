@@ -29,11 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _loadSavedCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString('saved_email');
-    final savedPassword = prefs.getString('saved_password');
-    if (savedEmail != null && savedPassword != null) {
+    if (savedEmail != null) {
       setState(() {
         _emailController.text = savedEmail;
-        _passwordController.text = savedPassword;
         _rememberMe = true;
       });
     }
@@ -42,11 +40,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _saveCredentials() async {
     final prefs = await SharedPreferences.getInstance();
     if (_rememberMe) {
+      // Only save email, never passwords
       await prefs.setString('saved_email', _emailController.text.trim());
-      await prefs.setString('saved_password', _passwordController.text);
     } else {
       await prefs.remove('saved_email');
-      await prefs.remove('saved_password');
     }
   }
 
