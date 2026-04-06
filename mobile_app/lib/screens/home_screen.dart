@@ -16,26 +16,56 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Map<String, bool> _scanStatus = {};
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<JobProvider>().fetchTodaysJobs();
-      context.read<JobProvider>().fetchOperatorJobs();
-      _loadScanStatus();
+      _refreshAll();
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refreshAll();
+  }
+
+  Future<void> _refreshAll() async {
+    final jobs = context.read<JobProvider>();
+    await jobs.fetchTodaysJobs();
+    await jobs.fetchOperatorJobs();
+    await _loadScanStatus();
   }
 
   Future<void> _loadScanStatus() async {
     final jobs = context.read<JobProvider>();
     final activeJob = jobs.currentJob;
-    if (activeJob == null) return;
+    if (activeJob == null) {
+      if (mounted) setState(() => _scanStatus = {});
+      return;
+    }
     try {
       final res = await ApiService().get('/qr/job/${activeJob.id}/status');
-      if (mounted) setState(() => _scanStatus = Map<String, bool>.from(res.data));
+      final data = res.data as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _scanStatus = {
+            'customer_location': data['customer_location'] == true,
+            'robot_deploy': data['robot_deploy'] == true,
+            'robot_return': data['robot_return'] == true,
+            'vehicle_return': data['vehicle_return'] == true,
+          };
+        });
+      }
     } catch (_) {}
   }
 
@@ -92,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
               'scanType': scanType,
               'instruction': instruction,
             });
-            if (result == true) _loadScanStatus();
+            if (result == true) await _refreshAll();
           },
           icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
           label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -105,11 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       floatingActionButton: scanFab,
       body: RefreshIndicator(
-        onRefresh: () async {
-          await jobs.fetchTodaysJobs();
-          await jobs.fetchOperatorJobs();
-          await _loadScanStatus();
-        },
+        onRefresh: _refreshAll,
         child: CustomScrollView(
           slivers: [
             // App bar with greeting
