@@ -7,9 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://13.212.204.12:3000',
+      '/api': 'https://admin.cobot.qa',
       '/socket.io': {
-        target: 'http://13.212.204.12:3000',
+        target: 'https://admin.cobot.qa',
         ws: true,
       },
     },
