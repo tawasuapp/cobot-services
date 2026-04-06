@@ -115,7 +115,7 @@ class SettingsScreen extends StatelessWidget {
                     },
                   ),
                 ),
-                if (location.currentPosition != null)
+                if (location.latitude != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: Row(
@@ -123,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
                         const Icon(Icons.my_location, size: 14, color: Colors.grey),
                         const SizedBox(width: 6),
                         Text(
-                          '${location.currentPosition!.latitude.toStringAsFixed(4)}, ${location.currentPosition!.longitude.toStringAsFixed(4)}',
+                          '${location.latitude!.toStringAsFixed(4)}, ${location.longitude?.toStringAsFixed(4)}',
                           style: const TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
