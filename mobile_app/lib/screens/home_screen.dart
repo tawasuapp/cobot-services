@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import '../providers/job_provider.dart';
 import '../providers/location_provider.dart';
 import '../utils/helpers.dart';
@@ -16,13 +17,26 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Map<String, bool> _scanStatus = {};
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<JobProvider>().fetchTodaysJobs();
       context.read<JobProvider>().fetchOperatorJobs();
+      _loadScanStatus();
     });
+  }
+
+  Future<void> _loadScanStatus() async {
+    final jobs = context.read<JobProvider>();
+    final activeJob = jobs.currentJob;
+    if (activeJob == null) return;
+    try {
+      final res = await ApiService().get('/qr/job/${activeJob.id}/status');
+      if (mounted) setState(() => _scanStatus = Map<String, bool>.from(res.data));
+    } catch (_) {}
   }
 
   @override
@@ -33,34 +47,53 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = auth.currentUser;
     final theme = Theme.of(context);
 
-    // Show Scan FAB if current job is at a scan step
+    // Show Scan FAB based on job status + scan progress from backend
     final activeJob = jobs.currentJob;
     Widget? scanFab;
-    if (activeJob != null && (activeJob.status == 'arrived' || activeJob.status == 'in_progress')) {
+    if (activeJob != null) {
       String? label;
       Color? color;
       String? scanType;
       String? instruction;
 
-      if (activeJob.status == 'arrived') {
+      final custScanned = _scanStatus['customer_location'] == true;
+      final robotDeployed = _scanStatus['robot_deploy'] == true;
+      final robotReturned = _scanStatus['robot_return'] == true;
+      final vehicleScanned = _scanStatus['vehicle_return'] == true;
+
+      if (activeJob.status == 'arrived' && !custScanned) {
         label = 'Scan Customer QR';
         color = Colors.indigo;
         scanType = 'customer_location';
         instruction = 'Scan the QR code at the customer location';
-      } else if (activeJob.status == 'in_progress') {
-        label = 'Scan Robot QR';
+      } else if (activeJob.status == 'arrived' && custScanned && !robotDeployed) {
+        label = 'Scan Robot to Deploy';
         color = Colors.teal;
         scanType = 'robot_deploy';
-        instruction = 'Scan the robot QR code';
+        instruction = 'Scan the QR code on the robot to deploy it';
+      } else if (activeJob.status == 'in_progress' && !robotReturned) {
+        // Only show after report is uploaded (we can't easily check that here, so show it)
+        label = 'Scan Robot (Return)';
+        color = Colors.orange;
+        scanType = 'robot_return';
+        instruction = 'Scan the robot QR to confirm return';
+      } else if (activeJob.status == 'in_progress' && robotReturned && !vehicleScanned) {
+        label = 'Scan Vehicle (Confirm)';
+        color = Colors.deepPurple;
+        scanType = 'vehicle_return';
+        instruction = 'Scan the vehicle QR to confirm robot is loaded';
       }
 
       if (label != null) {
         scanFab = FloatingActionButton.extended(
-          onPressed: () => Navigator.of(context).pushNamed('/qr-scanner', arguments: {
-            'job': activeJob,
-            'scanType': scanType,
-            'instruction': instruction,
-          }),
+          onPressed: () async {
+            final result = await Navigator.of(context).pushNamed('/qr-scanner', arguments: {
+              'job': activeJob,
+              'scanType': scanType,
+              'instruction': instruction,
+            });
+            if (result == true) _loadScanStatus();
+          },
           icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
           label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           backgroundColor: color,
@@ -75,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: () async {
           await jobs.fetchTodaysJobs();
           await jobs.fetchOperatorJobs();
+          await _loadScanStatus();
         },
         child: CustomScrollView(
           slivers: [
