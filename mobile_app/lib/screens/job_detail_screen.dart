@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/job.dart';
 import '../providers/job_provider.dart';
+import '../services/api_service.dart';
 import '../utils/helpers.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/status_badge.dart';
@@ -28,12 +29,36 @@ class JobDetailScreen extends StatefulWidget {
 class _JobDetailScreenState extends State<JobDetailScreen> {
   bool _isUpdating = false;
 
-  // Track sub-steps within "in_progress"
+  // Track sub-steps — persisted via backend qr_scan_logs
   bool _customerQrScanned = false;
   bool _robotDeployed = false;
   bool _reportUploaded = false;
   bool _robotReturned = false;
   bool _vehicleQrScanned = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final job = ModalRoute.of(context)?.settings.arguments as Job?;
+    if (job != null) _loadScanStatus(job.id);
+  }
+
+  Future<void> _loadScanStatus(String jobId) async {
+    try {
+      final res = await ApiService().get('/qr/job/$jobId/status');
+      final data = res.data as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _customerQrScanned = data['customer_location'] == true;
+          _robotDeployed = data['robot_deploy'] == true;
+          _robotReturned = data['robot_return'] == true;
+          _vehicleQrScanned = data['vehicle_return'] == true;
+        });
+      }
+    } catch (_) {
+      // Endpoint may not exist yet on older backends — ignore
+    }
+  }
 
   Future<void> _updateStatus(Job job, String newStatus) async {
     setState(() => _isUpdating = true);
