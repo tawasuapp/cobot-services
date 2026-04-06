@@ -73,11 +73,6 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-sm text-gray-500">
-            <p className="font-medium text-gray-600 mb-1">Demo Credentials</p>
-            <p>Email: info@techplaza.qa</p>
-            <p>Password: customer123</p>
-          </div>
         </div>
       </div>
     </div>

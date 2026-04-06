@@ -126,7 +126,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Email',
-                      hintText: 'operator1@cobot.qa',
+                      hintText: 'Enter your email',
                       prefixIcon: Icon(Icons.email_outlined),
                     ),
                     validator: (value) {
@@ -149,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onFieldSubmitted: (_) => _handleLogin(),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      hintText: 'oper123',
+                      hintText: 'Enter your password',
                       prefixIcon: const Icon(Icons.lock_outlined),
                       suffixIcon: IconButton(
                         icon: Icon(
