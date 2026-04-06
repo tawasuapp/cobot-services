@@ -62,15 +62,25 @@ async function createUser(req, res, next) {
 
 async function updateUser(req, res, next) {
   try {
+    // Users can only update themselves, admins can update anyone
+    if (req.user.role !== 'admin' && req.user.id !== req.params.id) {
+      return res.status(403).json({ error: 'You can only update your own profile' });
+    }
+
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const updates = { ...req.body };
     delete updates.password_hash;
     delete updates.id;
+    // Only admins can change roles
+    if (req.user.role !== 'admin') delete updates.role;
 
     if (updates.password) {
-      const salt = await bcrypt.genSalt(10);
+      const { validatePassword } = require('./authController');
+      const pwError = validatePassword(updates.password);
+      if (pwError) return res.status(400).json({ error: pwError });
+      const salt = await bcrypt.genSalt(12);
       updates.password_hash = await bcrypt.hash(updates.password, salt);
       delete updates.password;
     }
