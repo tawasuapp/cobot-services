@@ -15,13 +15,16 @@ async function processScan(req, res, next) {
         entity = await Customer.findByPk(parsed.id);
         break;
       case 'robot':
+      case 'robot_deploy':
+      case 'robot_return':
         entity = await Robot.findByPk(parsed.id);
         break;
       case 'vehicle':
+      case 'vehicle_return':
         entity = await Vehicle.findByPk(parsed.id);
         break;
       default:
-        return res.status(400).json({ error: 'Unknown QR type' });
+        return res.status(400).json({ error: `Unknown QR type: ${parsed.type}` });
     }
 
     if (!entity) {
