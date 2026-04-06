@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -137,10 +138,18 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Extract the actual error message from DioException
+        String errorMsg = 'Failed to verify QR code';
+        if (e is DioException && e.response?.data is Map) {
+          errorMsg = e.response?.data['error'] ?? errorMsg;
+        } else if (e is DioException) {
+          errorMsg = e.message ?? errorMsg;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to verify QR code: $e'),
+            content: Text(errorMsg),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
         setState(() => _isProcessing = false);
