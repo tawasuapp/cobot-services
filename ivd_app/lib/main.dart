@@ -22,6 +22,12 @@ void main() async {
 
   // Full-screen immersive mode for in-vehicle display
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  // Also hide system overlays explicitly
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarDividerColor: Colors.transparent,
+  ));
 
   runApp(const CobotIvdApp());
 }
