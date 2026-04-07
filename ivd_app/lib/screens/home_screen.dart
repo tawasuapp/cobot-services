@@ -46,7 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
         .toList();
 
     return Scaffold(
-      body: Column(
+      body: SafeArea(
+        child: Column(
         children: [
           // Top bar
           Container(
@@ -286,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

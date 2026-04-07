@@ -81,7 +81,8 @@ class _DrivingScreenState extends State<DrivingScreen> {
     }
 
     return Scaffold(
-      body: Column(
+      body: SafeArea(
+        child: Column(
         children: [
           // Top bar
           Container(
@@ -226,6 +227,7 @@ class _DrivingScreenState extends State<DrivingScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
