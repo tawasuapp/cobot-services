@@ -46,6 +46,10 @@ export default function Contracts() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
 
+  // View modal
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewContract, setViewContract] = useState(null);
+
   // Create modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
@@ -212,7 +216,8 @@ export default function Contracts() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            toast(`Contract ${row.contract_number} selected`);
+            setViewContract(row);
+            setShowViewModal(true);
           }}
           className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
         >
@@ -262,9 +267,66 @@ export default function Contracts() {
           data={contracts}
           pagination={pagination}
           onPageChange={(page) => fetchContracts(page)}
-          onRowClick={(row) => toast(`Contract ${row.contract_number} selected`)}
+          onRowClick={(row) => { setViewContract(row); setShowViewModal(true); }}
         />
       </div>
+
+      {/* View Contract Modal */}
+      <Modal
+        isOpen={showViewModal}
+        onClose={() => setShowViewModal(false)}
+        title="Contract Details"
+        size="lg"
+      >
+        {viewContract && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-400">Contract Number:</span>
+                <p className="font-medium text-gray-900">{viewContract.contract_number}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Customer:</span>
+                <p className="font-medium text-gray-900">{viewContract.Customer?.company_name || '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Type:</span>
+                <p className="font-medium text-gray-900 capitalize">{viewContract.contract_type?.replace('_', ' ') || '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Frequency:</span>
+                <p className="font-medium text-gray-900 capitalize">{viewContract.frequency || '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Start Date:</span>
+                <p className="font-medium text-gray-900">{viewContract.start_date ? formatDate(viewContract.start_date) : '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">End Date:</span>
+                <p className="font-medium text-gray-900">{viewContract.end_date ? formatDate(viewContract.end_date) : '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Total Value:</span>
+                <p className="font-medium text-gray-900">{formatCurrency(viewContract.total_value)}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Status:</span>
+                <div className="mt-0.5"><AlertBadge status={viewContract.status} /></div>
+              </div>
+              <div>
+                <span className="text-gray-400">Auto-Renew:</span>
+                <p className="font-medium text-gray-900">{viewContract.auto_renew ? 'Yes' : 'No'}</p>
+              </div>
+            </div>
+            {viewContract.terms && (
+              <div className="text-sm">
+                <span className="text-gray-400">Terms:</span>
+                <p className="text-gray-700 mt-1 whitespace-pre-wrap">{viewContract.terms}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Create Contract Modal */}
       <Modal
