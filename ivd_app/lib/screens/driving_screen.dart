@@ -101,7 +101,13 @@ class _DrivingScreenState extends State<DrivingScreen> {
     Uri uri;
     switch (choice) {
       case 'google':
-        // Use intent URI to open Google Maps directly without system chooser
+        // Use Google Maps package URI to start turn-by-turn navigation directly
+        uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+        try {
+          await launchUrl(uri);
+          return;
+        } catch (_) {}
+        // Fallback: Google Maps URL (shows route preview)
         uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
