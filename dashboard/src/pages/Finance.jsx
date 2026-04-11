@@ -8,6 +8,7 @@ import {
   Eye,
   CheckCircle,
   Download,
+  Pencil,
 } from 'lucide-react';
 import {
   LineChart,
@@ -43,6 +44,9 @@ export default function Finance() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [viewInvoice, setViewInvoice] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     customer_id: '',
     job_id: '',
@@ -146,12 +150,25 @@ export default function Finance() {
     }
   };
 
+  const openEditModal = (invoice) => {
+    setCreateForm({
+      customer_id: invoice.customer_id || invoice.Customer?.id || '',
+      job_id: invoice.job_id || '',
+      amount: invoice.amount ?? '',
+      tax_amount: invoice.tax_amount ?? '',
+      due_date: invoice.due_date ? invoice.due_date.slice(0, 10) : '',
+      notes: invoice.notes || '',
+    });
+    setEditingInvoice(invoice);
+    setShowCreateModal(true);
+  };
+
   const handleCreateInvoice = async (e) => {
     e.preventDefault();
     try {
       const amount = parseFloat(createForm.amount) || 0;
       const taxAmount = parseFloat(createForm.tax_amount) || 0;
-      await api.post('/invoices', {
+      const payload = {
         customer_id: createForm.customer_id,
         job_id: createForm.job_id || undefined,
         amount,
@@ -159,13 +176,20 @@ export default function Finance() {
         total_amount: amount + taxAmount,
         due_date: createForm.due_date,
         notes: createForm.notes,
-      });
-      toast.success('Invoice created successfully');
+      };
+      if (editingInvoice) {
+        await api.put(`/invoices/${editingInvoice.id}`, payload);
+        toast.success('Invoice updated successfully');
+      } else {
+        await api.post('/invoices', payload);
+        toast.success('Invoice created successfully');
+      }
       setShowCreateModal(false);
+      setEditingInvoice(null);
       setCreateForm({ customer_id: '', job_id: '', amount: '', tax_amount: '', due_date: '', notes: '' });
       fetchData();
     } catch (err) {
-      toast.error('Failed to create invoice');
+      toast.error(editingInvoice ? 'Failed to update invoice' : 'Failed to create invoice');
     }
   };
 
@@ -197,11 +221,18 @@ export default function Finance() {
       render: (_val, row) => (
         <div className="flex items-center gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); setViewInvoice(row); setShowViewModal(true); }}
             className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             title="View"
           >
             <Eye size={16} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); openEditModal(row); }}
+            className="p-1.5 text-gray-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+            title="Edit"
+          >
+            <Pencil size={16} />
           </button>
           {row.status !== 'paid' && (
             <button
@@ -213,7 +244,7 @@ export default function Finance() {
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); toast('PDF generation coming soon'); }}
             className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
             title="Download PDF"
           >
@@ -302,7 +333,11 @@ export default function Finance() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-medium text-gray-700">Recent Invoices</h3>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                setEditingInvoice(null);
+                setCreateForm({ customer_id: '', job_id: '', amount: '', tax_amount: '', due_date: '', notes: '' });
+                setShowCreateModal(true);
+              }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus size={16} />
@@ -319,8 +354,66 @@ export default function Finance() {
         </div>
       </div>
 
-      {/* Create Invoice Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Invoice" size="md">
+      {/* View Invoice Modal */}
+      <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)} title="Invoice Details" size="md">
+        {viewInvoice && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-400">Invoice Number:</span>
+                <p className="font-medium text-gray-900">{viewInvoice.invoice_number}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Customer:</span>
+                <p className="font-medium text-gray-900">{viewInvoice.Customer?.company_name || '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Amount:</span>
+                <p className="font-medium text-gray-900">{formatCurrency(viewInvoice.amount)}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Tax:</span>
+                <p className="font-medium text-gray-900">{formatCurrency(viewInvoice.tax_amount)}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Total:</span>
+                <p className="font-medium text-gray-900">{formatCurrency(viewInvoice.total_amount)}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Status:</span>
+                <div className="mt-0.5"><AlertBadge status={viewInvoice.status} /></div>
+              </div>
+              <div>
+                <span className="text-gray-400">Issue Date:</span>
+                <p className="font-medium text-gray-900">{viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Due Date:</span>
+                <p className="font-medium text-gray-900">{viewInvoice.due_date ? formatDate(viewInvoice.due_date) : '-'}</p>
+              </div>
+              <div>
+                <span className="text-gray-400">Payment Method:</span>
+                <p className="font-medium text-gray-900 capitalize">{viewInvoice.payment_method || '-'}</p>
+              </div>
+              {viewInvoice.paid_at && (
+                <div>
+                  <span className="text-gray-400">Paid At:</span>
+                  <p className="font-medium text-gray-900">{formatDate(viewInvoice.paid_at)}</p>
+                </div>
+              )}
+            </div>
+            {viewInvoice.notes && (
+              <div className="text-sm">
+                <span className="text-gray-400">Notes:</span>
+                <p className="text-gray-700 mt-1">{viewInvoice.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Create / Edit Invoice Modal */}
+      <Modal isOpen={showCreateModal} onClose={() => { setShowCreateModal(false); setEditingInvoice(null); }} title={editingInvoice ? 'Edit Invoice' : 'Create Invoice'} size="md">
         <form onSubmit={handleCreateInvoice} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Customer</label>
@@ -407,7 +500,7 @@ export default function Finance() {
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
-              onClick={() => setShowCreateModal(false)}
+              onClick={() => { setShowCreateModal(false); setEditingInvoice(null); }}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
             >
               Cancel
@@ -416,7 +509,7 @@ export default function Finance() {
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              Create Invoice
+              {editingInvoice ? 'Update Invoice' : 'Create Invoice'}
             </button>
           </div>
         </form>
