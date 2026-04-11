@@ -69,7 +69,7 @@ class _AppGate extends StatefulWidget {
 }
 
 class _AppGateState extends State<_AppGate> {
-  bool _permissionsGranted = false;
+  bool? _permissionsGranted; // null = still checking
   bool _authChecked = false;
 
   @override
@@ -79,19 +79,23 @@ class _AppGateState extends State<_AppGate> {
   }
 
   Future<void> _checkPermissionsQuickly() async {
-    // Quick check — if all granted, skip the screen
-    final locPerm = await Permission.locationWhenInUse.isGranted;
-    final gpsOn = await Geolocator.isLocationServiceEnabled();
-    final cam = await Permission.camera.isGranted;
-    final notif = await Permission.notification.isGranted;
+    try {
+      final locPerm = await Permission.locationWhenInUse.isGranted;
+      final gpsOn = await Geolocator.isLocationServiceEnabled();
+      final cam = await Permission.camera.isGranted;
+      final notif = await Permission.notification.isGranted;
 
-    if (mounted) {
-      if (locPerm && gpsOn && cam && notif) {
-        setState(() => _permissionsGranted = true);
-        _initAuth();
-      } else {
-        setState(() => _permissionsGranted = false);
+      if (mounted) {
+        if (locPerm && gpsOn && cam && notif) {
+          setState(() => _permissionsGranted = true);
+          _initAuth();
+        } else {
+          setState(() => _permissionsGranted = false);
+        }
       }
+    } catch (e) {
+      // If permission check fails, show the permissions screen
+      if (mounted) setState(() => _permissionsGranted = false);
     }
   }
 
@@ -123,10 +127,17 @@ class _AppGateState extends State<_AppGate> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_permissionsGranted) {
+    // Still checking permissions — show loading
+    if (_permissionsGranted == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    // Permissions not granted — show permissions screen
+    if (_permissionsGranted == false) {
       return PermissionsScreen(onAllGranted: _onPermissionsGranted);
     }
 
+    // Auth not checked yet — show loading
     if (!_authChecked) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
