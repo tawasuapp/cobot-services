@@ -37,9 +37,10 @@ class _DrivingScreenState extends State<DrivingScreen> {
     final lat = job.customer.latitude;
     final lng = job.customer.longitude;
 
-    // Launch geo intent — Android shows native "Open with" chooser (Maps, Waze, etc.)
-    final uri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
-    await launchUrl(uri);
+    // Use https Google Maps URL — Android shows native "Open with" chooser
+    // and both Maps and Waze handle this with navigation/directions
+    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   Future<void> _manualArrival() async {
