@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PermissionsScreen extends StatefulWidget {
@@ -34,9 +35,12 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   }
 
   Future<void> _checkPermissions() async {
-    final location = await Permission.locationWhenInUse.isGranted;
+    final locationPerm = await Permission.locationWhenInUse.isGranted;
+    final gpsEnabled = await Geolocator.isLocationServiceEnabled();
     final camera = await Permission.camera.isGranted;
     final notification = await Permission.notification.isGranted;
+
+    final location = locationPerm && gpsEnabled;
 
     if (mounted) {
       setState(() {
@@ -53,12 +57,16 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
   }
 
   Future<void> _requestAll() async {
-    // Location
+    // Location permission
     if (!_locationGranted) {
-      final status = await Permission.locationWhenInUse.request();
-      if (status.isGranted) {
-        // Also request background location on Android
+      final perm = await Permission.locationWhenInUse.request();
+      if (perm.isGranted) {
         await Permission.locationAlways.request();
+      }
+      // Check if GPS service is enabled
+      final gpsOn = await Geolocator.isLocationServiceEnabled();
+      if (!gpsOn) {
+        await Geolocator.openLocationSettings();
       }
     }
 
@@ -101,8 +109,8 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
 
               _PermissionTile(
                 icon: Icons.location_on,
-                title: 'Location',
-                subtitle: 'Track your route and detect arrival at customer locations',
+                title: 'Location (GPS must be ON)',
+                subtitle: 'Track your route and detect arrival at customer locations. GPS must be enabled.',
                 granted: _locationGranted,
                 color: Colors.blue,
               ),
