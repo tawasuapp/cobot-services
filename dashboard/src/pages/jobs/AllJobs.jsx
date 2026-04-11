@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search, Filter, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -82,6 +82,31 @@ export default function AllJobs() {
   }, [statusFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchJobs(1); }, [fetchJobs]);
+
+  const STATUS_SORT_ORDER = {
+    in_progress: 0,
+    en_route: 1,
+    arrived: 2,
+    assigned: 3,
+    scheduled: 4,
+    completed: 5,
+    cancelled: 6,
+  };
+
+  const displayJobs = useMemo(() => {
+    let sorted = [...jobs].sort((a, b) => {
+      const orderA = STATUS_SORT_ORDER[a.status] ?? 4;
+      const orderB = STATUS_SORT_ORDER[b.status] ?? 4;
+      return orderA - orderB;
+    });
+    if (customerSearch.trim()) {
+      const q = customerSearch.trim().toLowerCase();
+      sorted = sorted.filter((j) =>
+        (j.Customer?.company_name || '').toLowerCase().includes(q)
+      );
+    }
+    return sorted;
+  }, [jobs, customerSearch]);
 
   const fetchDropdowns = useCallback(async () => {
     try {
@@ -217,6 +242,16 @@ export default function AllJobs() {
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search customer..."
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-sm w-48"
+            />
+          </div>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-3 py-2 border border-gray-200 rounded-xl text-sm">
             {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -225,7 +260,7 @@ export default function AllJobs() {
           <button onClick={() => fetchJobs(1)} className="p-2 text-gray-400 hover:text-gray-700"><RefreshCw size={16} /></button>
         </div>
 
-        <DataTable columns={columns} data={jobs} pagination={pagination} onPageChange={(p) => fetchJobs(p)} onRowClick={(row) => setViewJobId(row.id)} />
+        <DataTable columns={columns} data={displayJobs} pagination={pagination} onPageChange={(p) => fetchJobs(p)} onRowClick={(row) => setViewJobId(row.id)} />
       </div>
 
       {/* Create / Edit Job Modal */}
