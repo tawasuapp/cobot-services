@@ -30,8 +30,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Cobot Services</h1>
-            <p className="text-gray-500 mt-1">Customer Portal</p>
+            <img src="/logo-dark.jpeg" alt="Cobot Services" className="h-10 mx-auto mb-3" />
+            <p className="text-gray-500 text-sm">Customer Portal</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">

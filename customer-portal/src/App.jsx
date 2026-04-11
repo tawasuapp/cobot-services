@@ -42,7 +42,7 @@ function Layout({ children }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-8">
-              <span className="text-lg font-bold text-gray-900">Cobot Services</span>
+              <img src="/logo-dark.jpeg" alt="Cobot Services" className="h-8" />
               <div className="hidden md:flex items-center gap-1">
                 {navItems.map((item) => (
                   <NavLink
