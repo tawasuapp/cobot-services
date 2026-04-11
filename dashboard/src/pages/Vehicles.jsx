@@ -26,7 +26,7 @@ const EMPTY_FORM = {
   name: '',
   model: '',
   status: 'active',
-  fuel_level: 100,
+
   robot_capacity: 1,
   assigned_driver_id: '',
   notes: '',
@@ -92,7 +92,7 @@ export default function Vehicles() {
       name: vehicle.name || '',
       model: vehicle.model || '',
       status: vehicle.status || 'active',
-      fuel_level: vehicle.fuel_level ?? 100,
+
       robot_capacity: vehicle.robot_capacity ?? 1,
       assigned_driver_id: vehicle.assigned_driver_id || vehicle.driver?.id || '',
       notes: vehicle.notes || '',
@@ -164,22 +164,6 @@ export default function Vehicles() {
       render: (val) => (
         <span className="text-sm font-medium">{Array.isArray(val) ? val.length : 0}</span>
       ),
-    },
-    {
-      key: 'fuel_level',
-      label: 'Fuel Level',
-      render: (val) => {
-        const pct = val ?? 0;
-        const color = pct > 50 ? 'bg-green-500' : pct > 20 ? 'bg-yellow-500' : 'bg-red-500';
-        return (
-          <div className="flex items-center gap-2 w-28">
-            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-            </div>
-            <span className="text-xs text-gray-600">{pct}%</span>
-          </div>
-        );
-      },
     },
     {
       key: 'last_service_date',
@@ -311,17 +295,6 @@ export default function Vehicles() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fuel Level (%)</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={form.fuel_level}
-                onChange={(e) => setForm({ ...form, fuel_level: Number(e.target.value) })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Robot Capacity</label>
               <input
                 type="number"
@@ -402,10 +375,6 @@ export default function Vehicles() {
               <div>
                 <span className="text-gray-400">Status:</span>
                 <div className="mt-0.5"><AlertBadge status={viewVehicle.status} /></div>
-              </div>
-              <div>
-                <span className="text-gray-400">Fuel Level:</span>
-                <p className="font-medium text-gray-900">{viewVehicle.fuel_level ?? 0}%</p>
               </div>
               <div>
                 <span className="text-gray-400">Robot Capacity:</span>
