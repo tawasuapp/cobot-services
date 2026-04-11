@@ -87,20 +87,8 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo / Branding
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryBlue,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.smart_toy,
-                      size: 48,
-                      color: Colors.white,
-                    ),
-                  ),
+                  // Logo
+                  Image.asset('assets/logo.png', width: 80, height: 80),
                   const SizedBox(height: 16),
                   Text(
                     'Cobot Services',
