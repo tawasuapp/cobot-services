@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/job.dart';
 import '../providers/job_provider.dart';
 import '../services/api_service.dart';
+import '../config/api_config.dart';
 import '../utils/helpers.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/status_badge.dart';
 
-/// Full RO job flow:
-/// 1. assigned → "Start Driving" (opens Google Maps, status → en_route)
-/// 2. en_route → "I've Arrived" (or auto-detect, status → arrived)
-/// 3. arrived → Scan Customer QR (verify location)
-/// 4. arrived (verified) → Scan Robot QR (deploy robot, status → in_progress)
-/// 5. in_progress → Robot cleaning... screenshot/extract report
-/// 6. in_progress → Upload Report
-/// 7. in_progress → Scan Robot QR (return robot)
-/// 8. in_progress → Scan Vehicle QR (confirm robot back in vehicle)
-/// 9. → Complete Job (status → completed)
+/// New 10-step RO job flow:
+/// 1. Start Driving → opens Google Maps, status → en_route
+/// 2. Arrive at Location → auto-detect via GPS or manual
+/// 3. Scan & Deploy Robot → scan robot QR, status → in_progress
+/// 4. Take Robot Photo → camera only (photo of deployed robot)
+/// 5. Scan Customer QR → verifies location, starts cleaning timer
+/// 6. Robot Cleaning → no input needed, timer running
+/// 7. Finish Cleaning & Upload Report → photo/gallery + notes, stops timer
+/// 8. Scan Robot (Return) → scan robot QR to confirm return
+/// 9. Take Robot Photo Inside VAN → camera only
+/// 10. Job Completed
 
 class JobDetailScreen extends StatefulWidget {
   const JobDetailScreen({super.key});
@@ -28,13 +31,18 @@ class JobDetailScreen extends StatefulWidget {
 
 class _JobDetailScreenState extends State<JobDetailScreen> {
   bool _isUpdating = false;
+  final _picker = ImagePicker();
 
-  // Track sub-steps — persisted via backend qr_scan_logs
-  bool _customerQrScanned = false;
+  // Scan steps persisted from backend
   bool _robotDeployed = false;
+  bool _robotPhotoTaken = false;
+  bool _customerQrScanned = false;
   bool _reportUploaded = false;
   bool _robotReturned = false;
-  bool _vehicleQrScanned = false;
+  bool _vanPhotoTaken = false;
+
+  // Cleaning timer
+  DateTime? _cleaningStartTime;
 
   @override
   void didChangeDependencies() {
@@ -49,24 +57,21 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       final data = res.data as Map<String, dynamic>;
       if (mounted) {
         setState(() {
-          _customerQrScanned = data['customer_location'] == true;
           _robotDeployed = data['robot_deploy'] == true;
+          _customerQrScanned = data['customer_location'] == true;
           _robotReturned = data['robot_return'] == true;
-          _vehicleQrScanned = data['vehicle_return'] == true;
-          // If robot was returned, report must have been uploaded
+          // Infer photo steps from scan progression
+          if (_customerQrScanned) _robotPhotoTaken = true;
           if (_robotReturned) _reportUploaded = true;
         });
       }
-    } catch (_) {
-      // Endpoint may not exist yet on older backends — ignore
-    }
+    } catch (_) {}
   }
 
   Future<void> _updateStatus(Job job, String newStatus) async {
     setState(() => _isUpdating = true);
     final success = await context.read<JobProvider>().updateJobStatus(job.id, newStatus);
     setState(() => _isUpdating = false);
-
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Status updated to ${newStatus.replaceAll('_', ' ')}')),
@@ -75,28 +80,45 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 
   Future<void> _scanQr(Job job, String scanType, String instruction) async {
-    final result = await Navigator.of(context).pushNamed(
-      '/qr-scanner',
-      arguments: {'job': job, 'scanType': scanType, 'instruction': instruction},
-    );
-
+    final result = await Navigator.of(context).pushNamed('/qr-scanner', arguments: {
+      'job': job, 'scanType': scanType, 'instruction': instruction,
+    });
     if (result == true && mounted) {
-      setState(() {
-        switch (scanType) {
-          case 'customer_location':
-            _customerQrScanned = true;
-            break;
-          case 'robot_deploy':
-            _robotDeployed = true;
-            break;
-          case 'robot_return':
-            _robotReturned = true;
-            break;
-          case 'vehicle_return':
-            _vehicleQrScanned = true;
-            break;
+      await _loadScanStatus(job.id);
+      // Refresh job status
+      await context.read<JobProvider>().fetchTodaysJobs();
+    }
+  }
+
+  Future<void> _takePhoto(String label, VoidCallback onDone) async {
+    final picked = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    if (picked != null) {
+      // Upload the photo
+      try {
+        final job = ModalRoute.of(context)?.settings.arguments as Job?;
+        await ApiService().uploadFile(
+          ApiConfig.reports,
+          filePath: picked.path,
+          fieldName: 'file',
+          extraFields: {
+            'job_id': job?.id ?? '',
+            'report_type': 'photo',
+            'description': label,
+          },
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$label uploaded'), backgroundColor: Colors.green),
+          );
+          onDone();
         }
-      });
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to upload: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
     }
   }
 
@@ -105,19 +127,16 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     final job = ModalRoute.of(context)!.settings.arguments as Job;
     final jobs = context.watch<JobProvider>();
     final liveJob = jobs.todaysJobs.where((j) => j.id == job.id).firstOrNull ??
-        jobs.operatorJobs.where((j) => j.id == job.id).firstOrNull ??
-        job;
+        jobs.operatorJobs.where((j) => j.id == job.id).firstOrNull ?? job;
 
-    final currentStep = _getCurrentStep(liveJob);
     final scanAction = _getScanAction(liveJob);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Job Details')),
-      // Contextual floating Scan button — only shown when a scan step is active
       floatingActionButton: scanAction != null
           ? FloatingActionButton.extended(
               onPressed: scanAction['onPressed'] as VoidCallback,
-              icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+              icon: Icon(scanAction['icon'] as IconData, color: Colors.white),
               label: Text(scanAction['label'] as String, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               backgroundColor: scanAction['color'] as Color?,
               foregroundColor: Colors.white,
@@ -170,23 +189,44 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
               ),
             const SizedBox(height: 20),
 
-            // Progress stepper
+            // 10-step progress tracker
             _SectionCard(title: 'Job Progress', icon: Icons.linear_scale, children: [
-              _StepRow(1, 'Start Driving', _isStepDone(liveJob, 1), _isStepActive(liveJob, 1)),
-              _StepRow(2, 'Arrive at Location', _isStepDone(liveJob, 2), _isStepActive(liveJob, 2)),
-              _StepRow(3, 'Scan Customer QR', _isStepDone(liveJob, 3) || _customerQrScanned, _isStepActive(liveJob, 3)),
-              _StepRow(4, 'Scan & Deploy Robot', _isStepDone(liveJob, 4) || _robotDeployed, _isStepActive(liveJob, 4)),
-              _StepRow(5, 'Robot Cleaning', _isStepDone(liveJob, 5), _isStepActive(liveJob, 5)),
-              _StepRow(6, 'Upload Report', _reportUploaded || _isStepDone(liveJob, 6), _isStepActive(liveJob, 6)),
-              _StepRow(7, 'Scan Robot (Return)', _robotReturned, _isStepActive(liveJob, 7)),
-              _StepRow(8, 'Scan Vehicle (Confirm)', _vehicleQrScanned, _isStepActive(liveJob, 8)),
-              _StepRow(9, 'Complete Job', liveJob.status == 'completed', false),
+              _StepRow(1, 'Start Driving', _isStepDone(liveJob, 1), _isStepActive(liveJob, 1), Icons.directions_car),
+              _StepRow(2, 'Arrive at Location', _isStepDone(liveJob, 2), _isStepActive(liveJob, 2), Icons.location_on),
+              _StepRow(3, 'Scan & Deploy Robot', _isStepDone(liveJob, 3) || _robotDeployed, _isStepActive(liveJob, 3), Icons.qr_code_scanner),
+              _StepRow(4, 'Take Robot Photo', _robotPhotoTaken, _isStepActive(liveJob, 4), Icons.camera_alt),
+              _StepRow(5, 'Scan Customer QR', _customerQrScanned, _isStepActive(liveJob, 5), Icons.qr_code),
+              _StepRow(6, 'Robot Cleaning', _isStepDone(liveJob, 6), _isStepActive(liveJob, 6), Icons.cleaning_services),
+              _StepRow(7, 'Upload Report', _reportUploaded, _isStepActive(liveJob, 7), Icons.upload_file),
+              _StepRow(8, 'Scan Robot (Return)', _robotReturned, _isStepActive(liveJob, 8), Icons.qr_code_scanner),
+              _StepRow(9, 'Photo Robot in VAN', _vanPhotoTaken, _isStepActive(liveJob, 9), Icons.camera_alt),
+              _StepRow(10, 'Job Completed', liveJob.status == 'completed', false, Icons.check_circle),
             ]),
             const SizedBox(height: 20),
 
+            // Cleaning timer display
+            if (_cleaningStartTime != null && !_reportUploaded)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.timer, color: Colors.orange.shade700),
+                    const SizedBox(width: 12),
+                    Text('Cleaning in progress...', style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            if (_cleaningStartTime != null && !_reportUploaded) const SizedBox(height: 12),
+
             // Action buttons
             ..._buildActionButtons(liveJob),
-            const SizedBox(height: 80), // Space for FAB
+            const SizedBox(height: 80),
           ],
         ),
       ),
@@ -201,23 +241,24 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
       case 'en_route':
         return 2;
       case 'arrived':
-        if (!_customerQrScanned) return 3;
-        if (!_robotDeployed) return 4;
-        return 5; // Both scanned, ready to start cleaning
+        if (!_robotDeployed) return 3;
+        if (!_robotPhotoTaken) return 4;
+        if (!_customerQrScanned) return 5;
+        return 5;
       case 'in_progress':
-        if (!_reportUploaded) return 6;
-        if (!_robotReturned) return 7;
-        if (!_vehicleQrScanned) return 8;
-        return 9;
+        if (!_reportUploaded) return _customerQrScanned ? 7 : 6;
+        if (!_robotReturned) return 8;
+        if (!_vanPhotoTaken) return 9;
+        return 10;
       case 'completed':
-        return 9;
+        return 10;
       default:
         return 1;
     }
   }
 
   bool _isStepDone(Job job, int step) {
-    final statusOrder = {'assigned': 1, 'scheduled': 1, 'en_route': 2, 'arrived': 3, 'in_progress': 5, 'completed': 9};
+    final statusOrder = {'assigned': 1, 'scheduled': 1, 'en_route': 2, 'arrived': 3, 'in_progress': 6, 'completed': 10};
     final current = statusOrder[job.status] ?? 0;
     return current > step;
   }
@@ -225,32 +266,42 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   bool _isStepActive(Job job, int step) => _getCurrentStep(job) == step;
 
   Map<String, dynamic>? _getScanAction(Job job) {
-    if (job.status == 'arrived' && !_customerQrScanned) {
+    // Step 3: Deploy robot
+    if (job.status == 'arrived' && !_robotDeployed) {
       return {
-        'label': 'Scan Customer QR',
-        'color': Colors.indigo,
-        'onPressed': () => _scanQr(job, 'customer_location', 'Scan the QR code at the customer location'),
-      };
-    }
-    if (job.status == 'arrived' && _customerQrScanned && !_robotDeployed) {
-      return {
-        'label': 'Scan Robot to Deploy',
-        'color': Colors.teal,
+        'label': 'Scan & Deploy Robot', 'color': Colors.teal, 'icon': Icons.qr_code_scanner,
         'onPressed': () => _scanQr(job, 'robot_deploy', 'Scan the QR code on the robot to deploy it'),
       };
     }
+    // Step 4: Take robot photo
+    if (job.status == 'arrived' && _robotDeployed && !_robotPhotoTaken) {
+      return {
+        'label': 'Take Robot Photo', 'color': Colors.indigo, 'icon': Icons.camera_alt,
+        'onPressed': () => _takePhoto('Robot deployed photo', () => setState(() => _robotPhotoTaken = true)),
+      };
+    }
+    // Step 5: Scan customer QR (starts timer)
+    if ((job.status == 'arrived' || job.status == 'in_progress') && _robotPhotoTaken && !_customerQrScanned) {
+      return {
+        'label': 'Scan Customer QR', 'color': Colors.blue, 'icon': Icons.qr_code,
+        'onPressed': () async {
+          await _scanQr(job, 'customer_location', 'Scan the QR code at the customer location to start cleaning');
+          if (mounted) setState(() => _cleaningStartTime = DateTime.now());
+        },
+      };
+    }
+    // Step 8: Return robot
     if (job.status == 'in_progress' && _reportUploaded && !_robotReturned) {
       return {
-        'label': 'Scan Robot (Return)',
-        'color': Colors.orange,
+        'label': 'Scan Robot (Return)', 'color': Colors.orange, 'icon': Icons.qr_code_scanner,
         'onPressed': () => _scanQr(job, 'robot_return', 'Scan the robot QR to confirm return'),
       };
     }
-    if (job.status == 'in_progress' && _robotReturned && !_vehicleQrScanned) {
+    // Step 9: Photo robot in van
+    if (job.status == 'in_progress' && _robotReturned && !_vanPhotoTaken) {
       return {
-        'label': 'Scan Vehicle (Confirm)',
-        'color': Colors.deepPurple,
-        'onPressed': () => _scanQr(job, 'vehicle_return', 'Scan the vehicle QR to confirm robot is loaded'),
+        'label': 'Photo Robot in VAN', 'color': Colors.deepPurple, 'icon': Icons.camera_alt,
+        'onPressed': () => _takePhoto('Robot returned to VAN photo', () => setState(() => _vanPhotoTaken = true)),
       };
     }
     return null;
@@ -283,68 +334,79 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             backgroundColor: Colors.purple,
             onPressed: () => _updateStatus(job, 'arrived'),
           ),
+          const SizedBox(height: 8),
+          const Text('GPS will auto-detect arrival when you\'re near the location.',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
         ];
 
       case 'arrived':
-        if (_customerQrScanned && _robotDeployed) {
+        if (_robotDeployed && _robotPhotoTaken && _customerQrScanned) {
           return [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('Robot deployed. Waiting for cleaning to finish...', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, color: Colors.grey)),
-            ),
             CustomButton(
-              label: 'Robot Cleaning Started',
-              icon: Icons.play_circle,
+              label: 'Start Robot Cleaning',
+              icon: Icons.cleaning_services,
               backgroundColor: Colors.teal,
               onPressed: () => _updateStatus(job, 'in_progress'),
             ),
           ];
         }
         return [
-          // Scan buttons are shown via FAB
           const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Use the Scan button below to proceed', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey)),
+            padding: EdgeInsets.all(12),
+            child: Text('Use the button below to proceed through the steps',
+                textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey)),
           ),
         ];
 
       case 'in_progress':
-        final buttons = <Widget>[];
-
         if (!_reportUploaded) {
-          buttons.add(CustomButton(
-            label: 'Upload Cleaning Report',
-            icon: Icons.camera_alt,
-            backgroundColor: Colors.teal,
-            onPressed: () async {
-              final result = await Navigator.of(context).pushNamed('/report-upload', arguments: job);
-              if (result == true && mounted) {
-                setState(() => _reportUploaded = true);
-              }
-            },
-          ));
-          buttons.add(const SizedBox(height: 8));
-          buttons.add(const Text('Take a screenshot of the robot cleaning report and upload it.',
-              style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center));
-        } else if (!_robotReturned || !_vehicleQrScanned) {
-          buttons.add(const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Report uploaded. Use the Scan button to return the robot and confirm vehicle loading.',
-                textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey)),
-          ));
-        } else {
-          buttons.add(CustomButton(
-            label: 'Complete Job',
-            icon: Icons.check_circle,
-            isLoading: _isUpdating,
-            backgroundColor: Colors.green,
-            onPressed: () async {
-              await _updateStatus(job, 'completed');
-              if (mounted) Navigator.of(context).pop();
-            },
-          ));
+          if (!_customerQrScanned) {
+            return [
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text('Complete the scan steps above first',
+                    textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey)),
+              ),
+            ];
+          }
+          return [
+            CustomButton(
+              label: 'Finish Cleaning & Upload Report',
+              icon: Icons.upload_file,
+              backgroundColor: Colors.teal,
+              onPressed: () async {
+                final result = await Navigator.of(context).pushNamed('/report-upload', arguments: job);
+                if (result == true && mounted) {
+                  setState(() => _reportUploaded = true);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            const Text('Take a photo of the cleaning report and upload it.',
+                style: TextStyle(fontSize: 12, color: Colors.grey), textAlign: TextAlign.center),
+          ];
         }
-        return buttons;
+        if (_robotReturned && _vanPhotoTaken) {
+          return [
+            CustomButton(
+              label: 'Complete Job',
+              icon: Icons.check_circle,
+              isLoading: _isUpdating,
+              backgroundColor: Colors.green,
+              onPressed: () async {
+                await _updateStatus(job, 'completed');
+                if (mounted) Navigator.of(context).pop();
+              },
+            ),
+          ];
+        }
+        return [
+          const Padding(
+            padding: EdgeInsets.all(12),
+            child: Text('Use the button below to return the robot and take a photo',
+                textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey)),
+          ),
+        ];
 
       default:
         return [];
@@ -357,8 +419,9 @@ class _StepRow extends StatelessWidget {
   final String label;
   final bool isDone;
   final bool isActive;
+  final IconData icon;
 
-  const _StepRow(this.step, this.label, this.isDone, this.isActive);
+  const _StepRow(this.step, this.label, this.isDone, this.isActive, this.icon);
 
   @override
   Widget build(BuildContext context) {
@@ -375,26 +438,26 @@ class _StepRow extends StatelessWidget {
             child: Center(
               child: isDone
                   ? const Icon(Icons.check, size: 16, color: Colors.white)
-                  : Text('$step', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isActive ? Colors.white : Colors.grey)),
+                  : Icon(icon, size: 14, color: isActive ? Colors.white : Colors.grey),
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              color: isDone ? Colors.green : isActive ? Theme.of(context).primaryColor : Colors.grey,
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isDone ? Colors.green : isActive ? Theme.of(context).primaryColor : Colors.grey,
+              ),
             ),
           ),
-          if (isActive) ...[
-            const Spacer(),
+          if (isActive)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: Theme.of(context).primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
               child: Text('Current', style: TextStyle(fontSize: 10, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
             ),
-          ],
         ],
       ),
     );
