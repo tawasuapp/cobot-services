@@ -48,7 +48,7 @@ class CobotApp extends StatelessWidget {
         home: const _AppGate(),
         routes: {
           '/login': (_) => const LoginScreen(),
-          '/home': (_) => const MainShell(),
+          '/home': (_) => MainShell(key: MainShell.shellKey),
           '/job-detail': (_) => const JobDetailScreen(),
           '/qr-scanner': (_) => const QrScannerScreen(),
           '/camera': (_) => const CameraScreen(),
@@ -130,6 +130,6 @@ class _AppGateState extends State<_AppGate> {
     }
 
     final auth = context.watch<AuthProvider>();
-    return auth.isLoggedIn ? const MainShell() : const LoginScreen();
+    return auth.isLoggedIn ? MainShell(key: MainShell.shellKey) : const LoginScreen();
   }
 }
