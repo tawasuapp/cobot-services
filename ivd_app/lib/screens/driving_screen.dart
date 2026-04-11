@@ -96,10 +96,14 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
     Uri uri;
     if (choice == 'google') {
-      // google.navigation starts turn-by-turn directly
+      // google.navigation with externalNonBrowserApplication skips browser chooser
+      // Only Google Maps handles this scheme, so it opens directly
       uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
-      try { await launchUrl(uri); return; } catch (_) {}
-      // Fallback
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
+        return;
+      } catch (_) {}
+      // Fallback: Google Maps web URL
       uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
