@@ -43,24 +43,56 @@ class _DrivingScreenState extends State<DrivingScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: IvdTheme.surfaceDark,
         title: const Text('Open Navigation', style: TextStyle(fontSize: 22, color: IvdTheme.textPrimary)),
-        content: const Text('Choose your navigation app:', style: TextStyle(color: IvdTheme.textSecondary)),
-        actions: [
-          TextButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'google'),
-            icon: const Icon(Icons.map, color: Colors.green),
-            label: const Text('Google Maps', style: TextStyle(fontSize: 18)),
-          ),
-          TextButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'waze'),
-            icon: const Icon(Icons.navigation, color: Colors.blue),
-            label: const Text('Waze', style: TextStyle(fontSize: 18)),
-          ),
-          TextButton.icon(
-            onPressed: () => Navigator.pop(ctx, 'web'),
-            icon: const Icon(Icons.language, color: Colors.orange),
-            label: const Text('Web Browser', style: TextStyle(fontSize: 18)),
-          ),
-        ],
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            // Google Maps button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, 'google'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF34A853),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.map, size: 24),
+                    SizedBox(width: 12),
+                    Text('Google Maps', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Waze button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, 'waze'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF33CCFF),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.navigation, size: 24),
+                    SizedBox(width: 12),
+                    Text('Waze', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       ),
     );
 
@@ -69,11 +101,13 @@ class _DrivingScreenState extends State<DrivingScreen> {
     Uri uri;
     switch (choice) {
       case 'google':
-        uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
-        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
-        uri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
-        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
-        // App not installed — open Play Store
+        // Use intent URI to open Google Maps directly without system chooser
+        uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          return;
+        }
+        // Fallback: Play Store
         uri = Uri.parse('market://details?id=com.google.android.apps.maps');
         if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
         uri = Uri.parse('https://play.google.com/store/apps/details?id=com.google.android.apps.maps');
@@ -82,14 +116,10 @@ class _DrivingScreenState extends State<DrivingScreen> {
       case 'waze':
         uri = Uri.parse('waze://?ll=$lat,$lng&navigate=yes');
         if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
-        // App not installed — open Play Store
+        // Not installed — Play Store
         uri = Uri.parse('market://details?id=com.waze');
         if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
         uri = Uri.parse('https://play.google.com/store/apps/details?id=com.waze');
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        break;
-      case 'web':
-        uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         break;
     }
