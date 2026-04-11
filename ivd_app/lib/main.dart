@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import 'config/theme.dart';
@@ -77,8 +78,21 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _checkAuth() async {
+    // Request location permission upfront
+    await _requestPermissions();
+
     final authProvider = context.read<AuthProvider>();
     final loggedIn = await authProvider.tryAutoLogin();
+
+    if (loggedIn) {
+      // Start continuous location tracking immediately
+      if (mounted) {
+        final loc = context.read<LocationProvider>();
+        loc.entityType = 'vehicle';
+        loc.entityId = authProvider.user?.id;
+        loc.startTracking();
+      }
+    }
 
     if (!mounted) return;
 
@@ -90,6 +104,40 @@ class _AuthGateState extends State<AuthGate> {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
       Navigator.of(context).pushReplacementNamed('/login');
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    // Check and request location permission
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.deniedForever) {
+      // Show dialog telling user to enable in settings
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: IvdTheme.surfaceDark,
+            title: const Text('Location Required', style: TextStyle(color: IvdTheme.textPrimary)),
+            content: const Text(
+              'Cobot IVD needs location access to track vehicle position and detect arrival at customer locations. Please enable location in device settings.',
+              style: TextStyle(color: IvdTheme.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Geolocator.openLocationSettings();
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Open Settings', style: TextStyle(fontSize: 18)),
+              ),
+            ],
+          ),
+        );
+      }
     }
   }
 
