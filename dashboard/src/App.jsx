@@ -17,6 +17,8 @@ import Finance from './pages/Finance';
 import Analytics from './pages/Analytics';
 import Alerts from './pages/Alerts';
 import Settings from './pages/Settings';
+import Profile from './pages/Profile';
+import Reports from './pages/Reports';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -77,6 +79,8 @@ export default function App() {
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/alerts" element={<Alerts />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/reports" element={<Reports />} />
               </Routes>
             </DashboardLayout>
           </ProtectedRoute>
