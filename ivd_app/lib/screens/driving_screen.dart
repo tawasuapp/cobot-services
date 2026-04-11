@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/job_provider.dart';
@@ -94,25 +95,23 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
     if (choice == null) return;
 
-    Uri uri;
     if (choice == 'google') {
-      // google.navigation with externalNonBrowserApplication skips browser chooser
-      // Only Google Maps handles this scheme, so it opens directly
-      uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+      // Use native Android intent with explicit package to bypass chooser
+      const channel = MethodChannel('com.powerweb.cobotivd/navigation');
       try {
-        await launchUrl(uri, mode: LaunchMode.externalNonBrowserApplication);
-        return;
+        final success = await channel.invokeMethod('openGoogleMapsNavigation', {'lat': lat, 'lng': lng});
+        if (success == true) return;
       } catch (_) {}
-      // Fallback: Google Maps web URL
-      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+      // Fallback: web URL
+      final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else {
       // Waze navigation
-      uri = Uri.parse('waze://?ll=$lat,$lng&navigate=yes');
-      try { await launchUrl(uri); return; } catch (_) {}
+      final wazeUri = Uri.parse('waze://?ll=$lat,$lng&navigate=yes');
+      try { await launchUrl(wazeUri); return; } catch (_) {}
       // Not installed
-      uri = Uri.parse('market://details?id=com.waze');
-      try { await launchUrl(uri); } catch (_) {}
+      final storeUri = Uri.parse('market://details?id=com.waze');
+      try { await launchUrl(storeUri); } catch (_) {}
     }
   }
 
