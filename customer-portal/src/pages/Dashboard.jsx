@@ -17,8 +17,8 @@ export default function Dashboard() {
           api.get(`/customers/${customer.id}/jobs`),
           api.get(`/customers/${customer.id}/invoices`),
         ]);
-        setJobs(jobsRes.data);
-        setInvoices(invoicesRes.data);
+        setJobs(jobsRes.data?.data || jobsRes.data || []);
+        setInvoices(invoicesRes.data?.data || invoicesRes.data || []);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
       } finally {

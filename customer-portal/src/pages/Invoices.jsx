@@ -14,7 +14,7 @@ export default function Invoices() {
     const fetchInvoices = async () => {
       try {
         const res = await api.get(`/customers/${customer.id}/invoices`);
-        setInvoices(res.data);
+        setInvoices(res.data?.data || res.data || []);
       } catch (err) {
         console.error('Failed to fetch invoices:', err);
       } finally {

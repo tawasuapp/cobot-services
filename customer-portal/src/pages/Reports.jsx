@@ -18,7 +18,7 @@ export default function Reports() {
         if (dateFrom) params.date_from = dateFrom;
         if (dateTo) params.date_to = dateTo;
         const res = await api.get(`/customers/${customer.id}/reports`, { params });
-        setReports(res.data);
+        setReports(res.data?.data || res.data || []);
       } catch (err) {
         console.error('Failed to fetch reports:', err);
       } finally {
