@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryBlue = Color(0xFF1565C0);
-  static const Color lightBlue = Color(0xFF42A5F5);
-  static const Color darkBlue = Color(0xFF0D47A1);
+  // Cobot Services brand cyan blue
+  static const Color primaryBlue = Color(0xFF00B4D8);
+  static const Color lightBlue = Color(0xFF48CAE4);
+  static const Color darkBlue = Color(0xFF0096C7);
   static const Color surfaceLight = Color(0xFFF5F7FA);
   static const Color textPrimary = Color(0xFF1A1A2E);
   static const Color textSecondary = Color(0xFF6B7280);
