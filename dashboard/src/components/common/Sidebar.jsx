@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Radio, Briefcase, Users, Bot, Truck,
-  DollarSign, BarChart3, Bell, Settings, LogOut, FileText, X, ChevronRight
+  DollarSign, BarChart3, Bell, Settings, LogOut, FileText, X, ChevronRight, Camera
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -33,6 +33,7 @@ const navSections = [
     label: 'Business',
     items: [
       { to: '/finance', icon: DollarSign, label: 'Finance' },
+      { to: '/reports', icon: Camera, label: 'Reports' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },
       { to: '/alerts', icon: Bell, label: 'Alerts' },
       { to: '/settings', icon: Settings, label: 'Settings' },
@@ -97,7 +98,11 @@ export default function Sidebar({ onClose }) {
 
       {/* User profile */}
       <div className="p-4 border-t border-white/10">
-        <div className="flex items-center gap-3 mb-3">
+        <NavLink
+          to="/profile"
+          onClick={onClose}
+          className="flex items-center gap-3 mb-3 p-1.5 -mx-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+        >
           <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
             {user?.first_name?.[0]}{user?.last_name?.[0]}
           </div>
@@ -105,7 +110,8 @@ export default function Sidebar({ onClose }) {
             <p className="text-sm font-medium truncate">{user?.first_name} {user?.last_name}</p>
             <p className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
           </div>
-        </div>
+          <ChevronRight size={14} className="text-gray-500" />
+        </NavLink>
         <button
           onClick={logout}
           className="flex items-center gap-2 text-xs text-gray-500 hover:text-red-400 transition-colors w-full px-1"
