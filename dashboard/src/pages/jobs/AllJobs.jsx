@@ -33,6 +33,7 @@ const EMPTY_FORM = {
   assigned_operator_id: '',
   assigned_vehicle_id: '',
   assigned_robot_id: '',
+  assigned_robot_ids: [],
   priority: 'normal',
   hourly_rate: '',
   description: '',
@@ -144,6 +145,7 @@ export default function AllJobs() {
       assigned_operator_id: job.assigned_operator_id || '',
       assigned_vehicle_id: job.assigned_vehicle_id || '',
       assigned_robot_id: job.assigned_robot_id || '',
+      assigned_robot_ids: job.assigned_robot_ids || (job.assigned_robot_id ? [job.assigned_robot_id] : []),
       priority: job.priority || 'normal',
       hourly_rate: job.hourly_rate || '',
       description: job.description || '',
@@ -327,12 +329,30 @@ export default function AllJobs() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Robot</label>
-              <select value={form.assigned_robot_id} onChange={(e) => setForm({...form, assigned_robot_id: e.target.value})} className={inputClass}>
-                <option value="">Select robot...</option>
-                {robots.map(r => <option key={r.id} value={r.id}>{r.name} ({r.serial_number})</option>)}
-              </select>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Robots (select one or more)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 border border-gray-200 rounded-xl max-h-40 overflow-y-auto">
+                {robots.map(r => {
+                  const selected = form.assigned_robot_ids.includes(r.id);
+                  return (
+                    <label key={r.id} className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer text-sm ${selected ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'}`}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => {
+                          const ids = selected
+                            ? form.assigned_robot_ids.filter(id => id !== r.id)
+                            : [...form.assigned_robot_ids, r.id];
+                          setForm({...form, assigned_robot_ids: ids, assigned_robot_id: ids[0] || ''});
+                        }}
+                        className="rounded"
+                      />
+                      <span className="truncate">{r.name}</span>
+                    </label>
+                  );
+                })}
+                {robots.length === 0 && <p className="text-xs text-gray-400 col-span-3">No available robots</p>}
+              </div>
             </div>
 
             <div>
