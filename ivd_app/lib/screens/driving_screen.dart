@@ -36,15 +36,62 @@ class _DrivingScreenState extends State<DrivingScreen> {
 
     final lat = job.customer.latitude;
     final lng = job.customer.longitude;
-    final uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      // Fallback to Google Maps web URL
-      final webUri = Uri.parse(
-          'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
-      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: IvdTheme.surfaceDark,
+        title: const Text('Open Navigation', style: TextStyle(fontSize: 22, color: IvdTheme.textPrimary)),
+        content: const Text('Choose your navigation app:', style: TextStyle(color: IvdTheme.textSecondary)),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'google'),
+            icon: const Icon(Icons.map, color: Colors.green),
+            label: const Text('Google Maps', style: TextStyle(fontSize: 18)),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'waze'),
+            icon: const Icon(Icons.navigation, color: Colors.blue),
+            label: const Text('Waze', style: TextStyle(fontSize: 18)),
+          ),
+          TextButton.icon(
+            onPressed: () => Navigator.pop(ctx, 'web'),
+            icon: const Icon(Icons.language, color: Colors.orange),
+            label: const Text('Web Browser', style: TextStyle(fontSize: 18)),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null) return;
+
+    Uri uri;
+    switch (choice) {
+      case 'google':
+        uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
+        uri = Uri.parse('geo:$lat,$lng?q=$lat,$lng');
+        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
+        // App not installed — open Play Store
+        uri = Uri.parse('market://details?id=com.google.android.apps.maps');
+        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
+        uri = Uri.parse('https://play.google.com/store/apps/details?id=com.google.android.apps.maps');
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        break;
+      case 'waze':
+        uri = Uri.parse('waze://?ll=$lat,$lng&navigate=yes');
+        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
+        // App not installed — open Play Store
+        uri = Uri.parse('market://details?id=com.waze');
+        if (await canLaunchUrl(uri)) { await launchUrl(uri); return; }
+        uri = Uri.parse('https://play.google.com/store/apps/details?id=com.waze');
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        break;
+      case 'web':
+        uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        break;
     }
   }
 
