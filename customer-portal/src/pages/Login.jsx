@@ -30,7 +30,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-xl shadow-lg p-8">
           <div className="text-center mb-8">
-            <img src="/logo-dark.jpeg" alt="Cobot Services" className="h-10 mx-auto mb-3" />
+            <img src="/logo-dark.png" alt="Cobot Services" className="h-10 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">Customer Portal</p>
           </div>
 
