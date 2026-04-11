@@ -101,13 +101,19 @@ class _DrivingScreenState extends State<DrivingScreen> {
     Uri uri;
     switch (choice) {
       case 'google':
-        // Use Google Maps package URI to start turn-by-turn navigation directly
+        // Intent URI targeting Google Maps package directly for turn-by-turn navigation
+        uri = Uri.parse('intent://navigation?q=$lat,$lng&mode=d#Intent;scheme=google.navigation;package=com.google.android.apps.maps;end');
+        try {
+          await launchUrl(uri);
+          return;
+        } catch (_) {}
+        // Fallback: google.navigation scheme
         uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
         try {
           await launchUrl(uri);
           return;
         } catch (_) {}
-        // Fallback: Google Maps URL (shows route preview)
+        // Fallback: Google Maps URL
         uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
         if (await canLaunchUrl(uri)) {
           await launchUrl(uri, mode: LaunchMode.externalApplication);
