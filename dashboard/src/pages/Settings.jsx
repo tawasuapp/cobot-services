@@ -7,6 +7,7 @@ import {
   Pencil,
   Trash2,
   Save,
+  Shield,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -18,6 +19,7 @@ import Modal from '../components/common/Modal';
 
 const TABS = [
   { key: 'team', label: 'Team Management', icon: Users },
+  { key: 'roles', label: 'Roles & Permissions', icon: Shield },
   { key: 'notifications', label: 'Notifications', icon: Bell },
   { key: 'system', label: 'System Settings', icon: Cog },
 ];
@@ -222,6 +224,11 @@ export default function Settings() {
           </div>
         )}
 
+        {/* Roles Tab */}
+        {activeTab === 'roles' && (
+          <RolesManager />
+        )}
+
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
           <div className="space-y-6">
@@ -411,6 +418,96 @@ export default function Settings() {
           </div>
         </form>
       </Modal>
+    </div>
+  );
+}
+
+const DEFAULT_PERMISSIONS = {
+  admin: { dashboard: true, live_ops: true, jobs: true, customers: true, robots: true, vehicles: true, finance: true, analytics: true, alerts: true, settings: true, reports: true },
+  supervisor: { dashboard: true, live_ops: true, jobs: true, customers: true, robots: true, vehicles: true, finance: true, analytics: true, alerts: true, settings: false, reports: true },
+  robot_operator: { dashboard: true, live_ops: false, jobs: true, customers: false, robots: false, vehicles: false, finance: false, analytics: false, alerts: true, settings: false, reports: true },
+  driver: { dashboard: true, live_ops: false, jobs: true, customers: false, robots: false, vehicles: false, finance: false, analytics: false, alerts: true, settings: false, reports: false },
+};
+
+const PERMISSION_LABELS = {
+  dashboard: 'Dashboard Overview',
+  live_ops: 'Live Ops Center',
+  jobs: 'Jobs Management',
+  customers: 'Customers',
+  robots: 'Robots',
+  vehicles: 'Vehicles',
+  finance: 'Finance & Invoices',
+  analytics: 'Analytics',
+  alerts: 'Alerts',
+  settings: 'Settings & Team',
+  reports: 'Reports',
+};
+
+function RolesManager() {
+  const [roles, setRoles] = useState(DEFAULT_PERMISSIONS);
+  const [saved, setSaved] = useState(false);
+
+  const togglePermission = (role, perm) => {
+    setRoles(prev => ({
+      ...prev,
+      [role]: { ...prev[role], [perm]: !prev[role][perm] },
+    }));
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    // In a full implementation, this would save to the backend
+    toast.success('Permissions saved');
+    setSaved(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">Configure what each role can access in the dashboard.</p>
+        <button onClick={handleSave} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 flex items-center gap-2">
+          <Save size={14} /> Save Changes
+        </button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">Permission</th>
+                {Object.keys(roles).map(role => (
+                  <th key={role} className="px-4 py-3 text-center font-semibold text-gray-600 capitalize">{role.replace('_', ' ')}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {Object.entries(PERMISSION_LABELS).map(([key, label]) => (
+                <tr key={key} className="hover:bg-gray-50/50">
+                  <td className="px-4 py-3 font-medium text-gray-700">{label}</td>
+                  {Object.keys(roles).map(role => (
+                    <td key={role} className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => role !== 'admin' ? togglePermission(role, key) : null}
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                          roles[role][key]
+                            ? 'bg-green-100 text-green-600 hover:bg-green-200'
+                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                        } ${role === 'admin' ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+                        title={role === 'admin' ? 'Admin always has full access' : `Toggle ${label} for ${role}`}
+                      >
+                        {roles[role][key] ? '✓' : '—'}
+                      </button>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400">Note: Admin role always has full access and cannot be modified.</p>
     </div>
   );
 }
