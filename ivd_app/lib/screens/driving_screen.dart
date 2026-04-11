@@ -37,10 +37,79 @@ class _DrivingScreenState extends State<DrivingScreen> {
     final lat = job.customer.latitude;
     final lng = job.customer.longitude;
 
-    // Use https Google Maps URL — Android shows native "Open with" chooser
-    // and both Maps and Waze handle this with navigation/directions
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: IvdTheme.surfaceDark,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Navigate with', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: IvdTheme.textPrimary)),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'google'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(color: IvdTheme.cardDark, borderRadius: BorderRadius.circular(16)),
+                      child: Column(
+                        children: [
+                          Icon(Icons.map, size: 48, color: Colors.green.shade400),
+                          const SizedBox(height: 8),
+                          const Text('Google Maps', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: IvdTheme.textPrimary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx, 'waze'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(color: IvdTheme.cardDark, borderRadius: BorderRadius.circular(16)),
+                      child: Column(
+                        children: [
+                          Icon(Icons.navigation, size: 48, color: Colors.cyan.shade400),
+                          const SizedBox(height: 8),
+                          const Text('Waze', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: IvdTheme.textPrimary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+
+    if (choice == null) return;
+
+    Uri uri;
+    if (choice == 'google') {
+      // google.navigation starts turn-by-turn directly
+      uri = Uri.parse('google.navigation:q=$lat,$lng&mode=d');
+      try { await launchUrl(uri); return; } catch (_) {}
+      // Fallback
+      uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      // Waze navigation
+      uri = Uri.parse('waze://?ll=$lat,$lng&navigate=yes');
+      try { await launchUrl(uri); return; } catch (_) {}
+      // Not installed
+      uri = Uri.parse('market://details?id=com.waze');
+      try { await launchUrl(uri); } catch (_) {}
+    }
   }
 
   Future<void> _manualArrival() async {
