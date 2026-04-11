@@ -101,18 +101,17 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ),
                   title: const Text('GPS Tracking'),
-                  subtitle: Text(location.isTracking ? 'Active — sending every 10 seconds' : 'Inactive'),
-                  trailing: Switch(
-                    value: location.isTracking,
-                    onChanged: (v) {
-                      if (v) {
-                        location.entityType = 'user';
-                        location.entityId = user?.id;
-                        location.startTracking();
-                      } else {
-                        location.stopTracking();
-                      }
-                    },
+                  subtitle: Text(location.isTracking ? 'GPS enabled — tracking active' : 'GPS not available'),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: location.isTracking ? Colors.green.shade50 : Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      location.isTracking ? 'Enabled' : 'Disabled',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: location.isTracking ? Colors.green.shade700 : Colors.red.shade700),
+                    ),
                   ),
                 ),
                 if (location.latitude != null)
