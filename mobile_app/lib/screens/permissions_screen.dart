@@ -60,10 +60,13 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     // Location permission
     if (!_locationGranted) {
       final perm = await Permission.locationWhenInUse.request();
+      if (perm.isPermanentlyDenied) {
+        await openAppSettings();
+        return;
+      }
       if (perm.isGranted) {
         await Permission.locationAlways.request();
       }
-      // Check if GPS service is enabled
       final gpsOn = await Geolocator.isLocationServiceEnabled();
       if (!gpsOn) {
         await Geolocator.openLocationSettings();
@@ -72,7 +75,11 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
 
     // Camera
     if (!_cameraGranted) {
-      await Permission.camera.request();
+      final perm = await Permission.camera.request();
+      if (perm.isPermanentlyDenied) {
+        await openAppSettings();
+        return;
+      }
     }
 
     // Notifications
@@ -81,6 +88,17 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
     }
 
     await _checkPermissions();
+
+    // If still not all granted, show warning
+    if (mounted && !(_locationGranted && _cameraGranted && _notificationGranted)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All permissions are required to use this app'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -79,12 +80,13 @@ class _AppGateState extends State<_AppGate> {
 
   Future<void> _checkPermissionsQuickly() async {
     // Quick check — if all granted, skip the screen
-    final loc = await Permission.locationWhenInUse.isGranted;
+    final locPerm = await Permission.locationWhenInUse.isGranted;
+    final gpsOn = await Geolocator.isLocationServiceEnabled();
     final cam = await Permission.camera.isGranted;
     final notif = await Permission.notification.isGranted;
 
     if (mounted) {
-      if (loc && cam && notif) {
+      if (locPerm && gpsOn && cam && notif) {
         setState(() => _permissionsGranted = true);
         _initAuth();
       } else {
