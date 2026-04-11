@@ -108,6 +108,34 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _requestPermissions() async {
+    // Check GPS service is enabled
+    final gpsOn = await Geolocator.isLocationServiceEnabled();
+    if (!gpsOn) {
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: IvdTheme.surfaceDark,
+            title: const Text('GPS Required', style: TextStyle(color: IvdTheme.textPrimary)),
+            content: const Text(
+              'Cobot IVD requires GPS to be enabled. Please turn on GPS in device settings.',
+              style: TextStyle(color: IvdTheme.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Geolocator.openLocationSettings();
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Open GPS Settings', style: TextStyle(fontSize: 18)),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
     // Check and request location permission
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
