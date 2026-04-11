@@ -183,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
             // Left: branding
             Column(
               children: [
-                Icon(Icons.precision_manufacturing, size: size.height * 0.2, color: IvdTheme.primaryBlue),
+                Image.asset('assets/logo.png', height: size.height * 0.2),
                 const SizedBox(height: 12),
                 const Text(
                   'COBOT SERVICES',
@@ -284,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.precision_manufacturing, size: size.height * 0.2, color: IvdTheme.primaryBlue),
+                Image.asset('assets/logo.png', height: size.height * 0.2),
                 const SizedBox(height: 12),
                 const FittedBox(
                   fit: BoxFit.scaleDown,

@@ -177,11 +177,7 @@ class _AuthGateState extends State<AuthGate> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.precision_manufacturing,
-              size: 80,
-              color: IvdTheme.primaryBlue,
-            ),
+            Image.asset('assets/logo.png', width: 80, height: 80),
             const SizedBox(height: 24),
             const Text(
               'COBOT SERVICES',
