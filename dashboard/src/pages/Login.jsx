@@ -29,7 +29,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <img src="/logo-light.jpeg" alt="Cobot Services" className="h-12 mx-auto mb-4" />
+          <img src="/logo-light.png" alt="Cobot Services" className="h-12 mx-auto mb-4" />
           <p className="text-blue-300/70 text-sm">Fleet Management Dashboard</p>
         </div>
 
