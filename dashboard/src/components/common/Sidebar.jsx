@@ -48,13 +48,8 @@ export default function Sidebar({ onClose }) {
   return (
     <aside className="w-64 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 text-white flex flex-col h-screen">
       {/* Logo */}
-      <div className="px-5 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-sm font-black">C</div>
-            Cobot Services
-          </h1>
-        </div>
+      <div className="px-4 py-4 flex items-center justify-between">
+        <img src="/logo-light.jpeg" alt="Cobot Services" className="h-9 object-contain" />
         {onClose && (
           <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-white/10">
             <X size={20} />

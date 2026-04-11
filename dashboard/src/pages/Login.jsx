@@ -29,11 +29,8 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-950 to-gray-900 flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-600/30">
-            <Bot size={32} className="text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Cobot Services</h1>
-          <p className="text-blue-300/70 mt-2 text-sm">Fleet Management Dashboard</p>
+          <img src="/logo-light.jpeg" alt="Cobot Services" className="h-12 mx-auto mb-4" />
+          <p className="text-blue-300/70 text-sm">Fleet Management Dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white/95 backdrop-blur rounded-2xl p-8 shadow-2xl">
