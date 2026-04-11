@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
+import 'main_shell.dart';
 import '../providers/job_provider.dart';
 import '../providers/location_provider.dart';
 import '../utils/helpers.dart';
@@ -77,54 +78,60 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final user = auth.currentUser;
     final theme = Theme.of(context);
 
-    // Show Scan FAB based on job status + scan progress from backend
+    // Show FAB based on new 10-step flow
     final activeJob = jobs.currentJob;
     Widget? scanFab;
     if (activeJob != null) {
+      final robotDeployed = _scanStatus['robot_deploy'] == true;
+      final custScanned = _scanStatus['customer_location'] == true;
+      final robotReturned = _scanStatus['robot_return'] == true;
+      final robotPhotoTaken = custScanned; // inferred
+      final reportUploaded = robotReturned; // inferred
+
       String? label;
       Color? color;
-      String? scanType;
-      String? instruction;
+      IconData fabIcon = Icons.qr_code_scanner;
+      VoidCallback? onPressed;
 
-      final custScanned = _scanStatus['customer_location'] == true;
-      final robotDeployed = _scanStatus['robot_deploy'] == true;
-      final robotReturned = _scanStatus['robot_return'] == true;
-      final vehicleScanned = _scanStatus['vehicle_return'] == true;
-
-      if (activeJob.status == 'arrived' && !custScanned) {
-        label = 'Scan Customer QR';
-        color = Colors.indigo;
-        scanType = 'customer_location';
-        instruction = 'Scan the QR code at the customer location';
-      } else if (activeJob.status == 'arrived' && custScanned && !robotDeployed) {
-        label = 'Scan Robot to Deploy';
+      // Step 3: Deploy robot
+      if (activeJob.status == 'arrived' && !robotDeployed) {
+        label = 'Scan & Deploy Robot';
         color = Colors.teal;
-        scanType = 'robot_deploy';
-        instruction = 'Scan the QR code on the robot to deploy it';
-      } else if (activeJob.status == 'in_progress' && !robotReturned) {
-        // Only show after report is uploaded (we can't easily check that here, so show it)
+        onPressed = () async {
+          final result = await Navigator.of(context).pushNamed('/qr-scanner', arguments: {
+            'job': activeJob, 'scanType': 'robot_deploy', 'instruction': 'Scan the robot QR to deploy',
+          });
+          if (result == true) await _refreshAll();
+        };
+      }
+      // Step 5: Scan customer QR
+      else if (activeJob.status == 'arrived' && robotDeployed && robotPhotoTaken && !custScanned) {
+        label = 'Scan Customer QR';
+        color = Colors.blue;
+        fabIcon = Icons.qr_code;
+        onPressed = () async {
+          final result = await Navigator.of(context).pushNamed('/qr-scanner', arguments: {
+            'job': activeJob, 'scanType': 'customer_location', 'instruction': 'Scan customer QR to start cleaning',
+          });
+          if (result == true) await _refreshAll();
+        };
+      }
+      // Step 8: Return robot
+      else if (activeJob.status == 'in_progress' && reportUploaded && !robotReturned) {
         label = 'Scan Robot (Return)';
         color = Colors.orange;
-        scanType = 'robot_return';
-        instruction = 'Scan the robot QR to confirm return';
-      } else if (activeJob.status == 'in_progress' && robotReturned && !vehicleScanned) {
-        label = 'Scan Vehicle (Confirm)';
-        color = Colors.deepPurple;
-        scanType = 'vehicle_return';
-        instruction = 'Scan the vehicle QR to confirm robot is loaded';
+        onPressed = () async {
+          final result = await Navigator.of(context).pushNamed('/qr-scanner', arguments: {
+            'job': activeJob, 'scanType': 'robot_return', 'instruction': 'Scan the robot QR to confirm return',
+          });
+          if (result == true) await _refreshAll();
+        };
       }
 
-      if (label != null) {
+      if (label != null && onPressed != null) {
         scanFab = FloatingActionButton.extended(
-          onPressed: () async {
-            final result = await Navigator.of(context).pushNamed('/qr-scanner', arguments: {
-              'job': activeJob,
-              'scanType': scanType,
-              'instruction': instruction,
-            });
-            if (result == true) await _refreshAll();
-          },
-          icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
+          onPressed: onPressed,
+          icon: Icon(fabIcon, color: Colors.white),
           label: Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           backgroundColor: color,
           foregroundColor: Colors.white,
@@ -216,36 +223,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.all(16),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
-                  // KPI Row
+                  // KPI Row — tappable to go to Jobs tab
                   Row(
                     children: [
-                      _KpiTile(
-                        icon: Icons.today,
-                        label: "Today's Jobs",
-                        value: '${jobs.todaysJobs.length}',
-                        color: Colors.blue,
-                      ),
+                      _KpiTile(icon: Icons.today, label: "Today's Jobs", value: '${jobs.todaysJobs.length}', color: Colors.blue,
+                        onTap: () => MainShell.switchToTab(1)),
                       const SizedBox(width: 10),
-                      _KpiTile(
-                        icon: Icons.play_circle,
-                        label: 'Active',
-                        value: '${jobs.activeJobs.length}',
-                        color: Colors.orange,
-                      ),
+                      _KpiTile(icon: Icons.play_circle, label: 'Active', value: '${jobs.activeJobs.length}', color: Colors.orange,
+                        onTap: () => MainShell.switchToTab(1)),
                       const SizedBox(width: 10),
-                      _KpiTile(
-                        icon: Icons.check_circle,
-                        label: 'Completed',
-                        value: '${jobs.completedJobs.length}',
-                        color: Colors.green,
-                      ),
+                      _KpiTile(icon: Icons.check_circle, label: 'Completed', value: '${jobs.completedJobs.length}', color: Colors.green,
+                        onTap: () => MainShell.switchToTab(1)),
                       const SizedBox(width: 10),
-                      _KpiTile(
-                        icon: Icons.pending_actions,
-                        label: 'Pending',
-                        value: '${jobs.scheduledJobs.length}',
-                        color: Colors.purple,
-                      ),
+                      _KpiTile(icon: Icons.pending_actions, label: 'Pending', value: '${jobs.scheduledJobs.length}', color: Colors.purple,
+                        onTap: () => MainShell.switchToTab(1)),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -276,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _SectionHeader(
                     title: "Today's Schedule",
                     trailing: TextButton(
-                      onPressed: () {}, // Jobs tab is accessible via bottom nav
+                      onPressed: () => MainShell.switchToTab(1),
                       child: const Text('See All'),
                     ),
                   ),
@@ -323,13 +314,16 @@ class _KpiTile extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
-  const _KpiTile({required this.icon, required this.label, required this.value, required this.color});
+  const _KpiTile({required this.icon, required this.label, required this.value, required this.color, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.08),
@@ -345,6 +339,7 @@ class _KpiTile extends StatelessWidget {
             Text(label, style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.8)), textAlign: TextAlign.center, maxLines: 1),
           ],
         ),
+      ),
       ),
     );
   }
