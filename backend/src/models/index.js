@@ -339,6 +339,10 @@ const Job = sequelize.define('Job', {
   assigned_operator_id: DataTypes.UUID,
   assigned_vehicle_id: DataTypes.UUID,
   assigned_robot_id: DataTypes.UUID,
+  assigned_robot_ids: {
+    type: DataTypes.JSONB,
+    defaultValue: [],
+  },
   hourly_rate: DataTypes.DECIMAL(10, 2),
   total_cost: DataTypes.DECIMAL(10, 2),
   currency: {
