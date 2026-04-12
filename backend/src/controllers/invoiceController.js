@@ -4,7 +4,13 @@ const { paginateQuery, formatPaginatedResponse, generateInvoiceNumber } = requir
 const { logActivity } = require('../services/notificationService');
 
 const invoiceIncludes = [
-  { model: Customer, attributes: ['id', 'company_name', 'contact_person', 'email', 'phone'] },
+  { model: Customer, attributes: ['id', 'company_name', 'contact_person', 'email', 'phone', 'address', 'customer_code'] },
+  {
+    model: Job,
+    attributes: ['id', 'job_number', 'service_type', 'description', 'scheduled_date',
+      'start_time', 'completion_time', 'actual_duration_minutes'],
+    required: false,
+  },
 ];
 
 async function listInvoices(req, res, next) {
