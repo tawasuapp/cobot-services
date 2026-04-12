@@ -49,54 +49,58 @@ class _DrivingScreenState extends State<DrivingScreen> {
     if (!mounted) return;
     final choice = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: IvdTheme.surfaceDark,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Navigate with', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: IvdTheme.textPrimary)),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
+      backgroundColor: Colors.white,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text(
+                  'Open with',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: _navAppTile(
                     onTap: () => Navigator.pop(ctx, 'google'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(color: IvdTheme.cardDark, borderRadius: BorderRadius.circular(16)),
-                      child: Column(
-                        children: [
-                          Icon(Icons.map, size: 48, color: Colors.green.shade400),
-                          const SizedBox(height: 8),
-                          const Text('Google Maps', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: IvdTheme.textPrimary)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: GestureDetector(
+                    assetPath: 'assets/google_maps.png',
+                    label: 'Maps',
+                    fallbackBg: const Color(0xFF34A853),
+                    fallbackLetter: 'M',
+                  )),
+                  const SizedBox(width: 12),
+                  Expanded(child: _navAppTile(
                     onTap: () => Navigator.pop(ctx, 'waze'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(color: IvdTheme.cardDark, borderRadius: BorderRadius.circular(16)),
-                      child: Column(
-                        children: [
-                          Icon(Icons.navigation, size: 48, color: Colors.cyan.shade400),
-                          const SizedBox(height: 8),
-                          const Text('Waze', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: IvdTheme.textPrimary)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
+                    assetPath: 'assets/waze.png',
+                    label: 'Waze',
+                    fallbackBg: const Color(0xFF33CCFF),
+                    fallbackLetter: 'W',
+                  )),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -121,6 +125,54 @@ class _DrivingScreenState extends State<DrivingScreen> {
       final storeUri = Uri.parse('market://details?id=com.waze');
       try { await launchUrl(storeUri); } catch (_) {}
     }
+  }
+
+  /// Tile used in the "Open with" navigation picker.
+  /// Shows the app's real PNG logo when present at [assetPath]; falls back
+  /// to a colored letter tile so the UI still works if the brand asset
+  /// hasn't been dropped into assets/ yet.
+  Widget _navAppTile({
+    required VoidCallback onTap,
+    required String assetPath,
+    required String label,
+    required Color fallbackBg,
+    required String fallbackLetter,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        child: Column(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox(
+                width: 68,
+                height: 68,
+                child: Image.asset(
+                  assetPath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: fallbackBg,
+                    alignment: Alignment.center,
+                    child: Text(
+                      fallbackLetter,
+                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Distance in meters between two GPS coordinates (Haversine).

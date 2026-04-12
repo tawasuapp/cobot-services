@@ -55,3 +55,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/google_maps.png
+    - assets/waze.png
