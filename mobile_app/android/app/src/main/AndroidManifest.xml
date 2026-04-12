@@ -41,5 +41,20 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Navigation apps surfaced in the "Navigate with" system chooser. -->
+        <package android:name="com.google.android.apps.maps"/>
+        <package android:name="com.waze"/>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="google.navigation"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https" android:host="www.waze.com"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https" android:host="waze.com"/>
+        </intent>
     </queries>
 </manifest>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -67,13 +68,34 @@ class Helpers {
     return launchUrl(wazeWeb, mode: LaunchMode.externalApplication);
   }
 
-  /// Prompt the user to pick between Waze and Google Maps, then open it.
-  /// Google Maps is the backup choice.
+  /// Opens the Android system "Navigate with" picker constrained to
+  /// Google Maps and Waze. The native side (MainActivity.kt) builds
+  /// package-specific navigation intents so picking either app starts
+  /// turn-by-turn directions.
+  ///
+  /// Falls back to the in-app Dart bottom sheet if the platform channel
+  /// isn't available (iOS, older builds).
   static Future<void> chooseNavigationApp(
     BuildContext context,
     double latitude,
-    double longitude,
-  ) async {
+    double longitude, {
+    String? label,
+  }) async {
+    if (Theme.of(context).platform == TargetPlatform.android) {
+      const channel = MethodChannel('com.powerweb.cobotoperator/navigation');
+      try {
+        final ok = await channel.invokeMethod<bool>('openNavigationChooser', {
+          'lat': latitude,
+          'lng': longitude,
+          'label': label ?? 'Customer',
+        });
+        if (ok == true) return;
+      } catch (_) {
+        // Channel not wired (iOS) — fall through to the Dart picker.
+      }
+    }
+
+    if (!context.mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -91,7 +113,6 @@ class Helpers {
             ListTile(
               leading: const Icon(Icons.navigation, color: Colors.blue),
               title: const Text('Waze'),
-              subtitle: const Text('Preferred'),
               onTap: () {
                 Navigator.pop(ctx);
                 openWazeNavigation(latitude, longitude);
@@ -100,7 +121,6 @@ class Helpers {
             ListTile(
               leading: const Icon(Icons.map, color: Colors.green),
               title: const Text('Google Maps'),
-              subtitle: const Text('Backup'),
               onTap: () {
                 Navigator.pop(ctx);
                 openGoogleMapsNavigation(latitude, longitude);
