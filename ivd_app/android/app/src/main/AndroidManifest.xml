@@ -49,6 +49,10 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Known nav apps — needed so isPackageInstalled() can see them
+             on Android 11+ package-visibility model. -->
+        <package android:name="com.google.android.apps.maps"/>
+        <package android:name="com.waze"/>
         <!-- Navigation apps -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>

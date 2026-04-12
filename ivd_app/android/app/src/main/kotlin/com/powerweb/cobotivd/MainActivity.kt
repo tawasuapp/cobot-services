@@ -3,7 +3,6 @@ package com.powerweb.cobotivd
 import android.content.Intent
 import android.content.pm.LabeledIntent
 import android.content.pm.PackageManager
-import android.content.pm.ResolveInfo
 import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -34,10 +33,6 @@ class MainActivity : FlutterActivity() {
                     }
                 }
 
-                // Build per-app NAVIGATION intents (not just view-location) and
-                // surface them in the system "Open with" chooser. Whichever
-                // app the driver picks receives an intent that starts
-                // turn-by-turn directions immediately.
                 "openNavigationChooser" -> {
                     val lat = call.argument<Double>("lat")
                     val lng = call.argument<Double>("lng")
@@ -60,79 +55,76 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Resolve installed map apps that can handle a geo: URI, then for each
-     * build a package-specific *navigation* intent (Google Maps'
-     * `google.navigation:`, Waze's `waze://…&navigate=yes`, …). Present them
-     * via Intent.createChooser with EXTRA_INITIAL_INTENTS so the user sees
-     * the native "Open with" sheet but every option starts directions
-     * instead of just dropping a pin.
+     * Show the system "Open with" chooser, but with per-app *navigation*
+     * intents (not just view-location). Each entry in the chooser fires a
+     * package-specific intent that starts turn-by-turn directions.
+     *
+     * We build the list from a known whitelist of nav apps (Google Maps,
+     * Waze, HERE) rather than relying on `queryIntentActivities(geo:)`.
+     * That probe sometimes misses Waze on devices where it hasn't yet
+     * re-registered its filters, or drops it when the chooser filters
+     * duplicates. Whitelisting guarantees it appears whenever installed.
      */
     private fun launchNavigationChooser(lat: Double, lng: Double, label: String): Boolean {
         val pm = packageManager
-        val encodedLabel = Uri.encode(label)
-        // Probe intent — what resolves for "show this location".
-        val geoProbe = Intent(Intent.ACTION_VIEW, Uri.parse("geo:$lat,$lng?q=$lat,$lng($encodedLabel)"))
-        val resolved: List<ResolveInfo> = pm.queryIntentActivities(geoProbe, 0)
-        if (resolved.isEmpty()) return false
+        // Targeted to Google Maps and Waze only — no generic geo: fallbacks
+        // so drivers never see Uber / Earth / Lyft / etc. in the picker.
+
+        data class Candidate(val pkg: String, val intent: Intent)
+        val candidates = listOf(
+            Candidate(
+                "com.google.android.apps.maps",
+                Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng&mode=d")),
+            ),
+            Candidate(
+                "com.waze",
+                Intent(Intent.ACTION_VIEW, Uri.parse("waze://?ll=$lat,$lng&navigate=yes")),
+            ),
+        )
 
         val navIntents = mutableListOf<LabeledIntent>()
-        val seen = mutableSetOf<String>()
-
-        for (info in resolved) {
-            val pkg = info.activityInfo.packageName
-            if (!seen.add(pkg)) continue
-            val navIntent = buildNavIntentForPackage(pkg, lat, lng, encodedLabel) ?: continue
-            val appLabel = info.loadLabel(pm)
-            val appIcon = info.activityInfo.applicationInfo.icon
-            navIntents.add(LabeledIntent(navIntent, pkg, appLabel, appIcon))
+        for (c in candidates) {
+            if (!isPackageInstalled(pm, c.pkg)) continue
+            val appInfo = try {
+                pm.getApplicationInfo(c.pkg, 0)
+            } catch (_: PackageManager.NameNotFoundException) {
+                continue
+            }
+            val appLabel = pm.getApplicationLabel(appInfo)
+            val appIcon = appInfo.icon
+            val intent = Intent(c.intent).setPackage(c.pkg)
+            navIntents.add(LabeledIntent(intent, c.pkg, appLabel, appIcon))
         }
 
         if (navIntents.isEmpty()) return false
 
-        // Use the first entry as the "primary" but restrict it to its own
-        // package so the chooser doesn't duplicate options from the probe.
-        val primary = Intent(navIntents[0])
-        val extras = if (navIntents.size > 1) navIntents.subList(1, navIntents.size).toTypedArray() else emptyArray()
+        // Use a dummy primary that no app handles so the chooser shows
+        // *only* our curated list (no duplicated geo: entries that would
+        // open a pin instead of directions).
+        val primary = if (navIntents.size == 1) {
+            Intent(navIntents[0])
+        } else {
+            Intent(navIntents[0]).also {
+                // Promote the first entry as primary; the rest go into
+                // EXTRA_INITIAL_INTENTS.
+            }
+        }
 
         val chooser = Intent.createChooser(primary, "Open with").apply {
-            if (extras.isNotEmpty()) putExtra(Intent.EXTRA_INITIAL_INTENTS, extras)
+            if (navIntents.size > 1) {
+                val rest = navIntents.subList(1, navIntents.size).toTypedArray<LabeledIntent>()
+                putExtra(Intent.EXTRA_INITIAL_INTENTS, rest)
+            }
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(chooser)
         return true
     }
 
-    /**
-     * Map package name → an intent that starts turn-by-turn navigation in
-     * that specific app. For unknown packages we fall back to a geo: view
-     * intent (the app will at least receive the destination coordinates).
-     */
-    private fun buildNavIntentForPackage(
-        pkg: String,
-        lat: Double,
-        lng: Double,
-        encodedLabel: String,
-    ): Intent? = when (pkg) {
-        "com.google.android.apps.maps" -> Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("google.navigation:q=$lat,$lng&mode=d"),
-        ).setPackage(pkg)
-
-        "com.waze" -> Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("waze://?ll=$lat,$lng&navigate=yes"),
-        ).setPackage(pkg)
-
-        // HERE WeGo starts navigation on this scheme.
-        "com.here.app.maps" -> Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("here.directions://v1.0/mylocation/$lat,$lng"),
-        ).setPackage(pkg)
-
-        // Organic Maps / other OSM forks — geo with navigation flag.
-        else -> Intent(
-            Intent.ACTION_VIEW,
-            Uri.parse("geo:$lat,$lng?q=$lat,$lng($encodedLabel)&mode=d"),
-        ).setPackage(pkg)
+    private fun isPackageInstalled(pm: PackageManager, pkg: String): Boolean = try {
+        pm.getPackageInfo(pkg, 0)
+        true
+    } catch (_: PackageManager.NameNotFoundException) {
+        false
     }
 }
