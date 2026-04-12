@@ -39,140 +39,53 @@ class _DrivingScreenState extends State<DrivingScreen> {
     super.dispose();
   }
 
+  /// Defers to the Android system "Open with" picker.
+  ///
+  /// Fires a native ACTION_VIEW intent on a geo: URI with a query, which
+  /// every navigation app (Google Maps, Waze, HERE WeGo, etc.) registers
+  /// for. Android shows its own chooser with the real app icons and the
+  /// "Just once / Always" buttons.
+  ///
+  /// Why a platform channel instead of `launchUrl(geo:)`:
+  /// `url_launcher`'s `externalApplication` mode on newer Android picks
+  /// a default handler silently and skips the chooser. The platform code
+  /// calls `Intent.createChooser(...)` so the chooser is forced.
+  ///
+  /// The `q=lat,lng(label)` form is what both Google Maps and Waze
+  /// interpret as a *destination* and immediately offer directions to,
+  /// rather than just dropping a pin.
   Future<void> _openMaps() async {
     final job = context.read<JobProvider>().currentJob;
     if (job == null) return;
 
     final lat = job.customer.latitude;
     final lng = job.customer.longitude;
+    final label = Uri.encodeComponent(job.customer.name);
 
-    if (!mounted) return;
-    final choice = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.white,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Drag handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 6),
-                child: Text(
-                  'Open with',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: Colors.black87),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(child: _navAppTile(
-                    onTap: () => Navigator.pop(ctx, 'google'),
-                    assetPath: 'assets/google_maps.png',
-                    label: 'Maps',
-                    fallbackBg: const Color(0xFF34A853),
-                    fallbackLetter: 'M',
-                  )),
-                  const SizedBox(width: 12),
-                  Expanded(child: _navAppTile(
-                    onTap: () => Navigator.pop(ctx, 'waze'),
-                    assetPath: 'assets/waze.png',
-                    label: 'Waze',
-                    fallbackBg: const Color(0xFF33CCFF),
-                    fallbackLetter: 'W',
-                  )),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (choice == null) return;
-
-    if (choice == 'google') {
-      // Use native Android intent with explicit package to bypass chooser
-      const channel = MethodChannel('com.powerweb.cobotivd/navigation');
-      try {
-        final success = await channel.invokeMethod('openGoogleMapsNavigation', {'lat': lat, 'lng': lng});
-        if (success == true) return;
-      } catch (_) {}
-      // Fallback: web URL
-      final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving');
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      // Waze navigation
-      final wazeUri = Uri.parse('waze://?ll=$lat,$lng&navigate=yes');
-      try { await launchUrl(wazeUri); return; } catch (_) {}
-      // Not installed
-      final storeUri = Uri.parse('market://details?id=com.waze');
-      try { await launchUrl(storeUri); } catch (_) {}
+    const channel = MethodChannel('com.powerweb.cobotivd/navigation');
+    try {
+      await channel.invokeMethod('openNavigationChooser', {
+        'lat': lat,
+        'lng': lng,
+        'label': job.customer.name,
+      });
+      return;
+    } catch (_) {
+      // Native channel not wired / failed — fall through to url_launcher.
     }
-  }
 
-  /// Tile used in the "Open with" navigation picker.
-  /// Shows the app's real PNG logo when present at [assetPath]; falls back
-  /// to a colored letter tile so the UI still works if the brand asset
-  /// hasn't been dropped into assets/ yet.
-  Widget _navAppTile({
-    required VoidCallback onTap,
-    required String assetPath,
-    required String label,
-    required Color fallbackBg,
-    required String fallbackLetter,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        child: Column(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 68,
-                height: 68,
-                child: Image.asset(
-                  assetPath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: fallbackBg,
-                    alignment: Alignment.center,
-                    child: Text(
-                      fallbackLetter,
-                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
+    final geoUri = Uri.parse('geo:$lat,$lng?q=$lat,$lng($label)');
+    try {
+      final ok = await launchUrl(geoUri, mode: LaunchMode.externalApplication);
+      if (ok) return;
+    } catch (_) {}
+
+    // Last-resort web fallback: Google Maps directions URL starts
+    // turn-by-turn navigation directly in browser or installed app.
+    final webUri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving',
     );
+    await launchUrl(webUri, mode: LaunchMode.externalApplication);
   }
 
   /// Distance in meters between two GPS coordinates (Haversine).
