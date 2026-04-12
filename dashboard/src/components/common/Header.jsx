@@ -29,8 +29,9 @@ export default function Header({ title, subtitle, actions }) {
   return (
     <header className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sticky top-0 z-10">
       <div className="flex items-center gap-4">
-        {/* Global search */}
-        <div className="hidden md:flex items-center gap-2 flex-1 max-w-md">
+        {/* Global search — sits on the left, fixed width so the rest of
+            the toolbar can hug the far right rather than clustering beside it. */}
+        <div className="hidden md:flex items-center gap-2 w-full max-w-md">
           <div className="relative w-full">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
@@ -41,10 +42,10 @@ export default function Header({ title, subtitle, actions }) {
           </div>
         </div>
 
-        <div className="flex-1 md:hidden" />
+        <div className="md:hidden flex-1" />
 
-        {/* Right toolbar */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Right toolbar — pinned to far right via ml-auto. */}
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors" title="Toggle theme">
             <Moon size={18} />
           </button>

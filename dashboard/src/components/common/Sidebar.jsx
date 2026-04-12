@@ -2,7 +2,6 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Radio, Briefcase, Users, Bot, Truck,
   DollarSign, BarChart3, Bell, Settings, LogOut, FileText, X, ChevronRight, Camera,
-  Box,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -49,15 +48,7 @@ export default function Sidebar({ onClose }) {
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
       {/* Brand */}
       <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm shadow-indigo-200">
-            <Box size={20} className="text-white" />
-          </div>
-          <div className="leading-tight">
-            <p className="text-base font-bold text-gray-900 tracking-tight">Cobot</p>
-            <p className="text-[10px] uppercase tracking-[0.18em] text-gray-400 -mt-0.5">Enterprise</p>
-          </div>
-        </div>
+        <img src="/cobot-logo.png" alt="Cobot" className="h-9 w-auto object-contain" />
         {onClose && (
           <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-gray-100 text-gray-500">
             <X size={18} />
