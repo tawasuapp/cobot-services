@@ -119,7 +119,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> with WidgetsBindi
               Text('Permissions Required', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               const Text(
-                'Cobot Operator needs the following permissions to track deliveries, scan QR codes, and receive job notifications.',
+                'Cobot Operator needs the following permissions to navigate to customer sites, scan robot and location QR codes, and receive job notifications.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontSize: 14),
               ),

@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/job.dart';
 import '../providers/job_provider.dart';
+import '../providers/location_provider.dart';
 import '../services/api_service.dart';
+import '../services/app_settings_service.dart';
 import '../config/api_config.dart';
 import '../utils/helpers.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/status_badge.dart';
+
 
 /// New 10-step RO job flow:
 /// 1. Start Driving → opens Google Maps, status → en_route
@@ -33,6 +38,14 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   bool _isUpdating = false;
   final _picker = ImagePicker();
 
+  /// True if the job is scheduled for a day after today. Future-day jobs
+  /// should not allow Start Driving / Navigate — operators shouldn't be able
+  /// to start tomorrow's work today.
+  bool _isFutureJob(Job job) {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    return job.scheduledDate.compareTo(today) > 0;
+  }
+
   // Scan steps persisted from backend
   bool _robotDeployed = false;
   bool _robotPhotoTaken = false;
@@ -49,6 +62,12 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     super.didChangeDependencies();
     final job = ModalRoute.of(context)?.settings.arguments as Job?;
     if (job != null) _loadScanStatus(job.id);
+    // Pull the latest arrival radius / GPS interval from the dashboard each
+    // time a job is opened, then restart the GPS timer if the interval changed.
+    AppSettingsService.instance.refreshFromServer().then((_) {
+      if (!mounted) return;
+      context.read<LocationProvider>().restartWithCurrentInterval();
+    });
   }
 
   Future<void> _loadScanStatus(String jobId) async {
@@ -60,12 +79,77 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
           _robotDeployed = data['robot_deploy'] == true;
           _customerQrScanned = data['customer_location'] == true;
           _robotReturned = data['robot_return'] == true;
-          // Infer photo steps from scan progression
-          if (_customerQrScanned) _robotPhotoTaken = true;
-          if (_robotReturned) _reportUploaded = true;
+          _robotPhotoTaken = data['robot_photo'] == true || _robotPhotoTaken;
+          _vanPhotoTaken = data['van_photo'] == true || _vanPhotoTaken;
+          _reportUploaded = data['report_uploaded'] == true || _reportUploaded;
         });
       }
     } catch (_) {}
+  }
+
+  /// Handles the "I've Arrived" action. If GPS shows the operator is too far
+  /// from the customer location, prompt to confirm and notify admin of the
+  /// manual override.
+  Future<void> _handleArrived(Job job) async {
+    final custLat = job.customer?.latitude;
+    final custLng = job.customer?.longitude;
+
+    double? distance;
+    if (custLat != null && custLng != null) {
+      Position? pos = context.read<LocationProvider>().currentPosition;
+      try {
+        pos ??= await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+        distance = Geolocator.distanceBetween(
+          pos.latitude, pos.longitude, custLat, custLng,
+        );
+      } catch (_) {
+        distance = null;
+      }
+    }
+
+    final radius = AppSettingsService.instance.arrivalRadiusMeters.toDouble();
+    if (distance != null && distance > radius) {
+      final distM = distance;
+      if (!mounted) return;
+      final loc = context.read<LocationProvider>();
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('You\'re far from the customer'),
+          content: Text(
+            'GPS shows you are about ${distM.toStringAsFixed(0)}m from the customer location. '
+            'Are you sure you want to mark as arrived? Admin will be notified of the manual override.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Mark Arrived', style: TextStyle(color: Colors.orange)),
+            ),
+          ],
+        ),
+      );
+      if (proceed != true) return;
+
+      // Best-effort notify admin of the manual (far) arrival.
+      try {
+        await ApiService().post('/jobs/${job.id}/manual-arrival', data: {
+          'distance_meters': distM,
+          'operator_lat': loc.latitude,
+          'operator_lng': loc.longitude,
+        });
+      } catch (e) {
+        debugPrint('Manual-arrival notify failed: $e');
+      }
+    }
+
+    if (!mounted) return;
+    await _updateStatus(job, 'arrived');
   }
 
   Future<void> _updateStatus(Job job, String newStatus) async {
@@ -176,12 +260,49 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             ]),
             const SizedBox(height: 12),
 
-            // Navigate button
-            if (liveJob.customer?.latitude != null && liveJob.customer?.longitude != null)
+            // Future-day scheduling banner
+            if (_isFutureJob(liveJob))
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.amber.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.schedule, color: Colors.amber.shade800),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Scheduled for ${Helpers.formatDate(liveJob.scheduledDateTime)} — cannot start today.',
+                        style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Navigate button — only before the job starts (en_route or earlier)
+            // and only on the scheduled day. Once the operator has arrived or
+            // deployed the robot, hide it to prevent accidental re-launch of
+            // Maps mid-flow.
+            if (liveJob.customer?.latitude != null &&
+                liveJob.customer?.longitude != null &&
+                !_isFutureJob(liveJob) &&
+                (liveJob.status == 'assigned' ||
+                    liveJob.status == 'scheduled' ||
+                    liveJob.status == 'en_route'))
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () => Helpers.openGoogleMapsNavigation(liveJob.customer!.latitude!, liveJob.customer!.longitude!),
+                  onPressed: () => Helpers.chooseNavigationApp(
+                    context,
+                    liveJob.customer!.latitude!,
+                    liveJob.customer!.longitude!,
+                  ),
                   icon: const Icon(Icons.navigation),
                   label: const Text('Navigate to Customer'),
                   style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
@@ -258,30 +379,56 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
   }
 
   bool _isStepDone(Job job, int step) {
-    final statusOrder = {'assigned': 1, 'scheduled': 1, 'en_route': 2, 'arrived': 3, 'in_progress': 6, 'completed': 10};
-    final current = statusOrder[job.status] ?? 0;
-    return current > step;
+    if (job.status == 'completed') return true;
+    switch (step) {
+      case 1: // Start Driving
+        return job.status == 'en_route' || job.status == 'arrived' || job.status == 'in_progress';
+      case 2: // Arrive at Location
+        return job.status == 'arrived' || job.status == 'in_progress';
+      case 3:
+        return _robotDeployed;
+      case 4:
+        return _robotPhotoTaken;
+      case 5:
+        return _customerQrScanned;
+      case 6: // Robot Cleaning
+        return _reportUploaded;
+      case 7:
+        return _reportUploaded;
+      case 8:
+        return _robotReturned;
+      case 9:
+        return _vanPhotoTaken;
+      default:
+        return false;
+    }
   }
 
   bool _isStepActive(Job job, int step) => _getCurrentStep(job) == step;
 
   Map<String, dynamic>? _getScanAction(Job job) {
+    // Steps 3/4/5 should stay available whether the backend reports the job
+    // as `arrived` or has already flipped it to `in_progress` after the
+    // robot_deploy scan — otherwise the operator gets stuck on "Robot
+    // Cleaning" with no way to take the photo or scan the customer QR.
+    final postArrival = job.status == 'arrived' || job.status == 'in_progress';
+
     // Step 3: Deploy robot
-    if (job.status == 'arrived' && !_robotDeployed) {
+    if (postArrival && !_robotDeployed) {
       return {
         'label': 'Scan & Deploy Robot', 'color': Colors.teal, 'icon': Icons.qr_code_scanner,
         'onPressed': () => _scanQr(job, 'robot_deploy', 'Scan the QR code on the robot to deploy it'),
       };
     }
     // Step 4: Take robot photo
-    if (job.status == 'arrived' && _robotDeployed && !_robotPhotoTaken) {
+    if (postArrival && _robotDeployed && !_robotPhotoTaken) {
       return {
         'label': 'Take Robot Photo', 'color': Colors.indigo, 'icon': Icons.camera_alt,
         'onPressed': () => _takePhoto('Robot deployed photo', () => setState(() => _robotPhotoTaken = true)),
       };
     }
     // Step 5: Scan customer QR (starts timer)
-    if ((job.status == 'arrived' || job.status == 'in_progress') && _robotPhotoTaken && !_customerQrScanned) {
+    if (postArrival && _robotPhotoTaken && !_customerQrScanned) {
       return {
         'label': 'Scan Customer QR', 'color': Colors.blue, 'icon': Icons.qr_code,
         'onPressed': () async {
@@ -311,6 +458,19 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
     switch (job.status) {
       case 'assigned':
       case 'scheduled':
+        if (_isFutureJob(job)) {
+          return [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'This job is scheduled for ${Helpers.formatDate(job.scheduledDateTime)}. '
+                'You can start it on the scheduled day.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ),
+          ];
+        }
         return [
           CustomButton(
             label: 'Start Driving',
@@ -318,8 +478,13 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             isLoading: _isUpdating,
             onPressed: () async {
               await _updateStatus(job, 'en_route');
+              if (!mounted) return;
               if (job.customer?.latitude != null && job.customer?.longitude != null) {
-                Helpers.openGoogleMapsNavigation(job.customer!.latitude!, job.customer!.longitude!);
+                Helpers.chooseNavigationApp(
+                  context,
+                  job.customer!.latitude!,
+                  job.customer!.longitude!,
+                );
               }
             },
           ),
@@ -332,7 +497,7 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
             icon: Icons.location_on,
             isLoading: _isUpdating,
             backgroundColor: Colors.purple,
-            onPressed: () => _updateStatus(job, 'arrived'),
+            onPressed: () => _handleArrived(job),
           ),
           const SizedBox(height: 8),
           const Text('GPS will auto-detect arrival when you\'re near the location.',
@@ -360,11 +525,11 @@ class _JobDetailScreenState extends State<JobDetailScreen> {
 
       case 'in_progress':
         if (!_reportUploaded) {
-          if (!_customerQrScanned) {
+          if (!_robotDeployed || !_robotPhotoTaken || !_customerQrScanned) {
             return [
               const Padding(
                 padding: EdgeInsets.all(12),
-                child: Text('Complete the scan steps above first',
+                child: Text('Use the button below to complete the scan & photo steps before cleaning',
                     textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: Colors.grey)),
               ),
             ];

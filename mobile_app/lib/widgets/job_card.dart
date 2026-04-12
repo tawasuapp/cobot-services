@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../models/job.dart';
 import 'status_badge.dart';
@@ -8,6 +9,11 @@ class JobCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const JobCard({super.key, required this.job, this.onTap});
+
+  bool get _isFuture {
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    return job.scheduledDate.compareTo(today) > 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +36,20 @@ class JobCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  if (_isFuture) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      margin: const EdgeInsets.only(right: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Scheduled',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                      ),
+                    ),
+                  ],
                   StatusBadge(status: job.status),
                 ],
               ),
