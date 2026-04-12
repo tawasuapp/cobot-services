@@ -50,3 +50,8 @@ cobot-sg-key.pem
 *.pem
 .secrets/
 releases/
+
+# Secrets — never commit
+backend/firebase-admin-sdk.json
+backend/cobot-key.pem
+backend/cobot-sg-key.pem
