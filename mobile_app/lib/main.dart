@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +18,7 @@ import 'screens/main_shell.dart';
 import 'screens/permissions_screen.dart';
 import 'screens/qr_scanner_screen.dart';
 import 'screens/report_upload_screen.dart';
+import 'services/app_settings_service.dart';
 import 'services/notification_service.dart';
 
 Future<void> main() async {
@@ -27,6 +30,10 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Firebase init skipped: $e');
   }
+
+  // Load cached admin settings (arrival radius, GPS interval) before the UI
+  // renders so the first job flow uses sensible values even offline.
+  await AppSettingsService.instance.loadCached();
 
   runApp(const CobotApp());
 }
@@ -105,24 +112,31 @@ class _AppGateState extends State<_AppGate> {
   }
 
   Future<void> _initAuth() async {
-    final auth = context.read<AuthProvider>();
-    await auth.tryAutoLogin();
+    try {
+      final auth = context.read<AuthProvider>();
+      await auth.tryAutoLogin();
 
-    if (auth.isLoggedIn) {
-      try {
-        await NotificationService().initialize();
-      } catch (e) {
-        debugPrint('Notification init skipped: $e');
+      if (auth.isLoggedIn) {
+        // Refresh admin settings (arrival radius, GPS interval) on session
+        // start so the app picks up dashboard changes without a reinstall.
+        unawaited(AppSettingsService.instance.refreshFromServer());
+        try {
+          await NotificationService().initialize();
+        } catch (e) {
+          debugPrint('Notification init skipped: $e');
+        }
+        if (mounted) {
+          final locProvider = context.read<LocationProvider>();
+          locProvider.entityType = 'user';
+          locProvider.entityId = auth.currentUser?.id;
+          locProvider.startTracking();
+        }
       }
-      if (mounted) {
-        final locProvider = context.read<LocationProvider>();
-        locProvider.entityType = 'user';
-        locProvider.entityId = auth.currentUser?.id;
-        locProvider.startTracking();
-      }
+    } catch (e) {
+      debugPrint('Auth init failed: $e');
+    } finally {
+      if (mounted) setState(() => _authChecked = true);
     }
-
-    if (mounted) setState(() => _authChecked = true);
   }
 
   @override

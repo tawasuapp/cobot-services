@@ -142,7 +142,7 @@ class SettingsScreen extends StatelessWidget {
                 const ListTile(
                   leading: Icon(Icons.info_outline),
                   title: Text('App Version'),
-                  trailing: Text('1.0.0', style: TextStyle(color: Colors.grey)),
+                  trailing: Text('1.5.0', style: TextStyle(color: Colors.grey)),
                 ),
                 const Divider(height: 1),
                 ListTile(
