@@ -74,9 +74,37 @@ export default function Settings() {
     }
   }, []);
 
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await api.get('/settings');
+      const s = res.data || {};
+      if (s.notifications && typeof s.notifications === 'object') {
+        setNotifications((prev) => ({ ...prev, ...s.notifications }));
+      }
+      setSystemSettings((prev) => ({
+        ...prev,
+        arrival_radius: Number(s.arrival_radius ?? prev.arrival_radius) || prev.arrival_radius,
+        location_update_interval: Number(s.location_update_interval ?? prev.location_update_interval) || prev.location_update_interval,
+        late_arrival_threshold: Number(s.late_arrival_threshold ?? prev.late_arrival_threshold) || prev.late_arrival_threshold,
+      }));
+    } catch (err) {
+      console.error('Failed to load settings', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchSettings();
+  }, [fetchUsers, fetchSettings]);
+
+  // Auto-save notifications when toggled (debounced).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      api.put('/settings', { notifications }).catch(() => {});
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifications]);
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
@@ -102,8 +130,17 @@ export default function Settings() {
     }
   };
 
-  const handleSaveSystem = () => {
-    toast.success('System settings saved');
+  const handleSaveSystem = async () => {
+    try {
+      await api.put('/settings', {
+        arrival_radius: String(systemSettings.arrival_radius),
+        location_update_interval: String(systemSettings.location_update_interval),
+        late_arrival_threshold: String(systemSettings.late_arrival_threshold),
+      });
+      toast.success('System settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save settings');
+    }
   };
 
   const userColumns = [
@@ -445,20 +482,31 @@ const PERMISSION_LABELS = {
 
 function RolesManager() {
   const [roles, setRoles] = useState(DEFAULT_PERMISSIONS);
-  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    api.get('/settings/role_permissions')
+      .then((res) => {
+        if (res.data?.value && typeof res.data.value === 'object') {
+          setRoles((prev) => ({ ...prev, ...res.data.value }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const togglePermission = (role, perm) => {
     setRoles(prev => ({
       ...prev,
       [role]: { ...prev[role], [perm]: !prev[role][perm] },
     }));
-    setSaved(false);
   };
 
-  const handleSave = () => {
-    // In a full implementation, this would save to the backend
-    toast.success('Permissions saved');
-    setSaved(true);
+  const handleSave = async () => {
+    try {
+      await api.put('/settings', { role_permissions: roles });
+      toast.success('Permissions saved');
+    } catch (err) {
+      toast.error('Failed to save permissions');
+    }
   };
 
   return (
