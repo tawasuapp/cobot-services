@@ -3,7 +3,9 @@ import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF, PolylineF, OverlayView
 
 export const GOOGLE_MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
-const GOOGLE_LIBRARIES = ['marker'];
+// `places` is required for the autocomplete widget used in the Customer
+// form. Declared at module scope so all consumers share one loader call.
+const GOOGLE_LIBRARIES = ['marker', 'places'];
 
 /**
  * Wrapper around `@react-google-maps/api` that:

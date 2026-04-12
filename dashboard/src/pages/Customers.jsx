@@ -20,6 +20,7 @@ import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { formatCurrency, formatDate } from '../utils/helpers';
 import QRCodeModal from '../components/common/QRCodeModal';
+import PlacesAutocomplete from '../components/maps/PlacesAutocomplete';
 
 const EMPTY_FORM = {
   customer_code: '',
@@ -425,11 +426,13 @@ export default function Customers() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-            <input
-              type="text"
+            <PlacesAutocomplete
               value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(v) => setForm((f) => ({ ...f, address: v }))}
+              onSelect={({ address, latitude, longitude }) =>
+                setForm((f) => ({ ...f, address, latitude, longitude }))
+              }
+              placeholder="Search an address in Qatar…"
             />
           </div>
 
@@ -441,7 +444,8 @@ export default function Customers() {
                 step="any"
                 value={form.latitude}
                 onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-600"
               />
             </div>
             <div>
@@ -451,7 +455,8 @@ export default function Customers() {
                 step="any"
                 value={form.longitude}
                 onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                readOnly
+                className="w-full px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg text-gray-600"
               />
             </div>
           </div>
