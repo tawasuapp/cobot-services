@@ -22,6 +22,7 @@ import { formatCurrency, formatDate } from '../utils/helpers';
 import QRCodeModal from '../components/common/QRCodeModal';
 
 const EMPTY_FORM = {
+  customer_code: '',
   company_name: '',
   contact_person: '',
   email: '',
@@ -75,6 +76,7 @@ export default function Customers() {
       customers.filter(
         (c) =>
           c.company_name?.toLowerCase().includes(q) ||
+          c.customer_code?.toLowerCase().includes(q) ||
           c.contact_person?.toLowerCase().includes(q) ||
           c.email?.toLowerCase().includes(q)
       )
@@ -116,6 +118,7 @@ export default function Customers() {
   const openEditModal = () => {
     if (!selected) return;
     setForm({
+      customer_code: selected.customer_code || '',
       company_name: selected.company_name || '',
       contact_person: selected.contact_person || '',
       email: selected.email || '',
@@ -222,6 +225,9 @@ export default function Customers() {
                 }`}
               >
                 <p className="text-sm font-medium text-gray-900 truncate">{customer.company_name}</p>
+                {customer.customer_code && (
+                  <p className="text-[10px] font-mono text-gray-500 mt-0.5">{customer.customer_code}</p>
+                )}
                 <div className="flex items-center gap-2 mt-1">
                   <AlertBadge status={customer.partner_tier} />
                   <AlertBadge status={customer.status} />
@@ -247,7 +253,14 @@ export default function Customers() {
                 <div className="flex items-start justify-between">
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">{selected.company_name}</h2>
-                    <AlertBadge status={selected.partner_tier} className="mt-1" />
+                    <div className="flex items-center gap-2 mt-1">
+                      {selected.customer_code && (
+                        <span className="font-mono text-xs px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
+                          {selected.customer_code}
+                        </span>
+                      )}
+                      <AlertBadge status={selected.partner_tier} />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -360,6 +373,17 @@ export default function Customers() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Customer ID</label>
+              <input
+                type="text"
+                value={form.customer_code}
+                onChange={(e) => setForm({ ...form, customer_code: e.target.value.toUpperCase() })}
+                placeholder="Auto-generated (e.g. CUST-0001)"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              />
+              <p className="text-xs text-gray-400 mt-1">Used to generate the customer's QR code. Leave blank to auto-assign.</p>
+            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
               <input
