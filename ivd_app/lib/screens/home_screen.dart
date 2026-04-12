@@ -30,22 +30,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startDriving(Job job) async {
+    // Optimistic navigation: don't make the driver wait on the AWS
+    // Singapore round-trip before the screen reacts. We push to /driving
+    // immediately and fire the status update in the background. If the
+    // backend rejects it, we pop back and surface the error.
     if (_startingDrive) return;
     setState(() => _startingDrive = true);
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final jobProvider = context.read<JobProvider>();
-    final ok = await jobProvider.startDriving(job.id);
-    if (!mounted) return;
-    setState(() => _startingDrive = false);
-    if (ok) {
-      Navigator.of(context).pushNamed('/driving');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: IvdTheme.warningOrange,
-          content: Text(jobProvider.errorMessage ?? 'Could not start driving — please retry.'),
-        ),
-      );
-    }
+
+    navigator.pushNamed('/driving');
+
+    jobProvider.startDriving(job.id).then((ok) {
+      if (!mounted) return;
+      setState(() => _startingDrive = false);
+      if (!ok) {
+        // Roll back — get the driver back to home so they can retry.
+        if (navigator.canPop()) navigator.pop();
+        messenger.showSnackBar(
+          SnackBar(
+            backgroundColor: IvdTheme.warningOrange,
+            content: Text(jobProvider.errorMessage ?? 'Could not start driving — please retry.'),
+          ),
+        );
+      }
+    });
   }
 
   // No skip — once a trip is assigned, it must be completed

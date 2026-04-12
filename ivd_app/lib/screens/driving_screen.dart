@@ -187,20 +187,11 @@ class _DrivingScreenState extends State<DrivingScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.map,
-                            size: 64,
+                            Icons.navigation_rounded,
+                            size: 72,
                             color: IvdTheme.primaryBlue.withValues(alpha: 0.5),
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Google Maps Navigation',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w600,
-                              color: IvdTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 20),
                           const Text(
                             'Tap "Open Maps" to start turn-by-turn navigation',
                             style: TextStyle(
@@ -216,11 +207,14 @@ class _DrivingScreenState extends State<DrivingScreen> {
                                 const Icon(Icons.location_on,
                                     color: IvdTheme.accentBlue, size: 20),
                                 const SizedBox(width: 8),
-                                Text(
-                                  job.customer.address,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    color: IvdTheme.textSecondary,
+                                Flexible(
+                                  child: Text(
+                                    job.customer.address,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      color: IvdTheme.textSecondary,
+                                    ),
                                   ),
                                 ),
                               ],
