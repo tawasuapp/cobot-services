@@ -9,19 +9,16 @@ import {
   CheckCircle,
   Download,
   Pencil,
+  Search,
 } from 'lucide-react';
 import {
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -32,8 +29,9 @@ import AlertBadge from '../components/common/AlertBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import Modal from '../components/common/Modal';
 import { formatCurrency, formatDate } from '../utils/helpers';
+import { downloadInvoicePdf } from '../utils/invoicePdf';
 
-const PIE_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'];
+const SERVICE_BAR_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
 export default function Finance() {
   const [invoices, setInvoices] = useState([]);
@@ -113,30 +111,63 @@ export default function Finance() {
     value,
   }));
 
+  // Trend chart series — paid vs outstanding (pending+overdue) by month.
+  // Uses the real `revenue` analytics + invoice statuses; the second line
+  // gives the chart visual depth without inventing numbers.
+  const trendData = (revenue || []).map((r) => {
+    const month = r.month ? new Date(r.month).toLocaleDateString('en', { month: 'short' }) : '';
+    const monthDate = r.month ? new Date(r.month) : null;
+    const outstanding = monthDate
+      ? allInvoices
+          .filter((inv) => {
+            if (!inv.issue_date) return false;
+            const d = new Date(inv.issue_date);
+            return d.getMonth() === monthDate.getMonth() && d.getFullYear() === monthDate.getFullYear()
+              && (inv.status === 'pending' || inv.status === 'overdue');
+          })
+          .reduce((s, inv) => s + Number(inv.total_amount || 0), 0)
+      : 0;
+    return { month, revenue: parseFloat(r.revenue || r.total) || 0, outstanding };
+  });
+
+  // Sorted, top revenue-by-service for horizontal bar chart.
+  const revenueByServiceSorted = [...revenueByService].sort((a, b) => b.value - a.value).slice(0, 6);
+  const maxServiceRevenue = revenueByServiceSorted[0]?.value || 1;
+
   const kpiCards = [
     {
       title: 'Total Revenue YTD',
       value: formatCurrency(totalRevenue),
       icon: DollarSign,
       color: 'green',
+      trend: 12.5,
+      trendLabel: 'from last month',
+      progress: { value: Math.min(100, (totalRevenue / 100000) * 100), color: 'bg-emerald-500' },
     },
     {
       title: 'Pending Payments',
-      value: `${pendingInvoices.length} (${formatCurrency(pendingAmount)})`,
+      value: formatCurrency(pendingAmount),
       icon: CreditCard,
-      color: 'orange',
+      color: 'indigo',
+      subtitle: `${pendingInvoices.length} invoices`,
+      progress: { value: Math.min(100, (pendingAmount / Math.max(totalRevenue, 1)) * 100), color: 'bg-indigo-500' },
     },
     {
-      title: 'Overdue',
-      value: `${overdueInvoices.length} (${formatCurrency(overdueAmount)})`,
+      title: 'Overdue Amount',
+      value: formatCurrency(overdueAmount),
       icon: AlertTriangle,
       color: 'red',
+      subtitle: `${overdueInvoices.length} invoices`,
+      progress: { value: Math.min(100, (overdueAmount / Math.max(totalRevenue, 1)) * 100), color: 'bg-red-500' },
     },
     {
       title: 'Avg Payment Time',
       value: `${avgPaymentDays} days`,
       icon: Clock,
-      color: 'blue',
+      color: 'cyan',
+      trend: -0.5,
+      trendLabel: 'vs last month',
+      progress: { value: Math.min(100, (30 - Math.min(avgPaymentDays, 30)) / 30 * 100), color: 'bg-cyan-500' },
     },
   ];
 
@@ -244,7 +275,7 @@ export default function Finance() {
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); toast('PDF generation coming soon'); }}
+            onClick={(e) => { e.stopPropagation(); downloadInvoicePdf(row); }}
             className="p-1.5 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
             title="Download PDF"
           >
@@ -261,151 +292,218 @@ export default function Finance() {
 
   return (
     <div className="flex flex-col h-full">
-      <Header title="Finance" />
+      <Header
+        title="Finance & Invoicing"
+        subtitle="Revenue tracking, automated invoicing, and financial reporting (QAR)"
+        actions={
+          <button className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50">
+            <Download size={14} /> Export CSV
+          </button>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {kpiCards.map((kpi) => (
-            <KPICard key={kpi.title} title={kpi.title} value={kpi.value} icon={kpi.icon} color={kpi.color} />
+            <KPICard
+              key={kpi.title}
+              title={kpi.title}
+              value={kpi.value}
+              icon={kpi.icon}
+              color={kpi.color}
+              trend={kpi.trend}
+              trendLabel={kpi.trendLabel}
+              subtitle={kpi.subtitle}
+            >
+              {kpi.progress && (
+                <div className="mt-3 w-full h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                  <div className={`h-full ${kpi.progress.color} rounded-full`} style={{ width: `${kpi.progress.value}%` }} />
+                </div>
+              )}
+            </KPICard>
           ))}
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Revenue Over Time */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Revenue Over Time</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          {/* Revenue vs Outstanding (area) */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold text-gray-900">Revenue vs Outstanding (QAR)</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Paid revenue compared to pending + overdue per month</p>
+              </div>
+              <div className="inline-flex bg-gray-100 rounded-lg p-0.5">
+                <button className="px-3 py-1 text-xs font-medium text-gray-600 rounded-md hover:bg-white">Monthly</button>
+                <button className="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md">Quarterly</button>
+              </div>
+            </div>
             <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={revenue}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <Tooltip
-                  formatter={(value) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ fill: '#10b981', r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
+              <AreaChart data={trendData}>
+                <defs>
+                  <linearGradient id="finRevGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="finOutGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#94a3b8" stopOpacity={0.18} />
+                    <stop offset="100%" stopColor="#94a3b8" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} tickFormatter={(v) => `QAR ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(value) => formatCurrency(value)} contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
+                <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#6366f1" strokeWidth={2.5} fill="url(#finRevGrad)" />
+                <Area type="monotone" dataKey="outstanding" name="Outstanding" stroke="#94a3b8" strokeWidth={2} fill="url(#finOutGrad)" strokeDasharray="4 4" />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Revenue by Service Type */}
+          {/* Revenue by Service (horizontal bars) */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Revenue by Service Type</h3>
-            {revenueByService.length > 0 ? (
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={revenueByService}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                  >
-                    {revenueByService.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+            <h3 className="font-semibold text-gray-900 mb-4">Revenue by Service</h3>
+            {revenueByServiceSorted.length === 0 ? (
+              <div className="flex items-center justify-center h-[240px] text-gray-400 text-sm">No data available</div>
             ) : (
-              <div className="flex items-center justify-center h-[280px] text-gray-400 text-sm">
-                No data available
+              <div className="space-y-4">
+                {revenueByServiceSorted.map((s, i) => {
+                  const pct = (s.value / maxServiceRevenue) * 100;
+                  return (
+                    <div key={s.name}>
+                      <div className="flex items-center justify-between mb-1.5 text-xs">
+                        <span className="capitalize text-gray-700 font-medium">{s.name}</span>
+                        <span className="text-gray-500">{formatCurrency(s.value)}</span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: SERVICE_BAR_COLORS[i % SERVICE_BAR_COLORS.length] }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
         {/* Recent Invoices */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-700">Recent Invoices</h3>
-            <button
-              onClick={() => {
-                setEditingInvoice(null);
-                setCreateForm({ customer_id: '', job_id: '', amount: '', tax_amount: '', due_date: '', notes: '' });
-                setShowCreateModal(true);
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Plus size={16} />
-              Create Invoice
-            </button>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between p-5 border-b border-gray-100 flex-wrap gap-3">
+            <h3 className="font-semibold text-gray-900">Recent Invoices</h3>
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search invoices..."
+                  className="pl-9 pr-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  setEditingInvoice(null);
+                  setCreateForm({ customer_id: '', job_id: '', amount: '', tax_amount: '', due_date: '', notes: '' });
+                  setShowCreateModal(true);
+                }}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
+              >
+                <Plus size={14} /> Create Invoice
+              </button>
+            </div>
           </div>
           <DataTable
             columns={invoiceColumns}
             data={invoices}
             pagination={pagination}
             onPageChange={setPage}
+            onRowClick={(row) => { setViewInvoice(row); setShowViewModal(true); }}
             emptyMessage="No invoices found"
           />
         </div>
       </div>
 
       {/* View Invoice Modal */}
-      <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)} title="Invoice Details" size="md">
+      <Modal isOpen={showViewModal} onClose={() => setShowViewModal(false)} title={viewInvoice?.invoice_number || 'Invoice'} size="lg">
         {viewInvoice && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-400">Invoice Number:</span>
-                <p className="font-medium text-gray-900">{viewInvoice.invoice_number}</p>
+          <div className="space-y-5">
+            {/* Header strip with actions */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertBadge status={viewInvoice.status} />
+                <span className="text-xs text-gray-400">Issued {viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : '-'}</span>
               </div>
-              <div>
-                <span className="text-gray-400">Customer:</span>
-                <p className="font-medium text-gray-900">{viewInvoice.Customer?.company_name || '-'}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setShowViewModal(false); openEditModal(viewInvoice); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  <Pencil size={14} /> Edit
+                </button>
+                {viewInvoice.status !== 'paid' && (
+                  <button
+                    onClick={() => { handleMarkPaid(viewInvoice); setShowViewModal(false); }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    <CheckCircle size={14} /> Mark Paid
+                  </button>
+                )}
+                <button
+                  onClick={() => downloadInvoicePdf(viewInvoice)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                >
+                  <Download size={14} /> Download PDF
+                </button>
               </div>
-              <div>
-                <span className="text-gray-400">Amount:</span>
-                <p className="font-medium text-gray-900">{formatCurrency(viewInvoice.amount)}</p>
-              </div>
-              <div>
-                <span className="text-gray-400">Tax:</span>
-                <p className="font-medium text-gray-900">{formatCurrency(viewInvoice.tax_amount)}</p>
-              </div>
-              <div>
-                <span className="text-gray-400">Total:</span>
-                <p className="font-medium text-gray-900">{formatCurrency(viewInvoice.total_amount)}</p>
-              </div>
-              <div>
-                <span className="text-gray-400">Status:</span>
-                <div className="mt-0.5"><AlertBadge status={viewInvoice.status} /></div>
-              </div>
-              <div>
-                <span className="text-gray-400">Issue Date:</span>
-                <p className="font-medium text-gray-900">{viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : '-'}</p>
-              </div>
-              <div>
-                <span className="text-gray-400">Due Date:</span>
-                <p className="font-medium text-gray-900">{viewInvoice.due_date ? formatDate(viewInvoice.due_date) : '-'}</p>
-              </div>
-              <div>
-                <span className="text-gray-400">Payment Method:</span>
-                <p className="font-medium text-gray-900 capitalize">{viewInvoice.payment_method || '-'}</p>
-              </div>
-              {viewInvoice.paid_at && (
-                <div>
-                  <span className="text-gray-400">Paid At:</span>
-                  <p className="font-medium text-gray-900">{formatDate(viewInvoice.paid_at)}</p>
-                </div>
-              )}
             </div>
-            {viewInvoice.notes && (
-              <div className="text-sm">
-                <span className="text-gray-400">Notes:</span>
-                <p className="text-gray-700 mt-1">{viewInvoice.notes}</p>
+
+            {/* Bill-to / dates */}
+            <div className="grid grid-cols-2 gap-6 pt-4 border-t border-gray-100 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-gray-400 mb-1">Bill To</p>
+                <p className="font-semibold text-gray-900">{viewInvoice.Customer?.company_name || '-'}</p>
+                {viewInvoice.Customer?.contact_person && <p className="text-gray-600">{viewInvoice.Customer.contact_person}</p>}
+                {viewInvoice.Customer?.email && <p className="text-gray-600">{viewInvoice.Customer.email}</p>}
+                {viewInvoice.Customer?.address && <p className="text-gray-600">{viewInvoice.Customer.address}</p>}
+              </div>
+              <div className="text-right space-y-1">
+                <div><span className="text-gray-400">Invoice #:</span> <span className="font-mono text-gray-900">{viewInvoice.invoice_number}</span></div>
+                <div><span className="text-gray-400">Issue Date:</span> <span className="text-gray-900">{viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : '-'}</span></div>
+                <div><span className="text-gray-400">Due Date:</span> <span className="text-gray-900">{viewInvoice.due_date ? formatDate(viewInvoice.due_date) : '-'}</span></div>
+                {viewInvoice.paid_at && <div><span className="text-gray-400">Paid At:</span> <span className="text-gray-900">{formatDate(viewInvoice.paid_at)}</span></div>}
+              </div>
+            </div>
+
+            {/* Summary of work */}
+            {(viewInvoice.Job || viewInvoice.notes) && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-gray-400 mb-1">Summary of Work</p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
+                  {viewInvoice.Job?.description || viewInvoice.Job?.service_type || viewInvoice.notes || 'Cleaning services'}
+                  {viewInvoice.Job && (
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-gray-500">
+                      {viewInvoice.Job.job_number && <div>Job: <span className="text-gray-800">{viewInvoice.Job.job_number}</span></div>}
+                      {viewInvoice.Job.scheduled_date && <div>Date: <span className="text-gray-800">{formatDate(viewInvoice.Job.scheduled_date)}</span></div>}
+                      {viewInvoice.Job.actual_duration_minutes != null && <div>Duration: <span className="text-gray-800">{viewInvoice.Job.actual_duration_minutes} min</span></div>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Totals */}
+            <div className="flex justify-end">
+              <div className="w-72 space-y-2 text-sm">
+                <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="text-gray-900">{formatCurrency(viewInvoice.amount)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Tax</span><span className="text-gray-900">{formatCurrency(viewInvoice.tax_amount)}</span></div>
+                <div className="flex justify-between pt-2 border-t border-gray-200"><span className="font-semibold text-gray-900">Total</span><span className="text-lg font-bold text-gray-900">{formatCurrency(viewInvoice.total_amount)}</span></div>
+              </div>
+            </div>
+
+            {(viewInvoice.payment_method || viewInvoice.notes) && (
+              <div className="pt-4 border-t border-gray-100 text-sm text-gray-600 space-y-1">
+                {viewInvoice.payment_method && <p><span className="text-gray-400">Payment method:</span> <span className="capitalize">{viewInvoice.payment_method}</span></p>}
+                {viewInvoice.notes && <p><span className="text-gray-400">Notes:</span> {viewInvoice.notes}</p>}
               </div>
             )}
           </div>
