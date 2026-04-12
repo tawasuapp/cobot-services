@@ -26,6 +26,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
 
   bool _isProcessing = false;
   bool _torchEnabled = false;
+  String? _errorMessage;
+  String? _lastScannedValue;
 
   @override
   void dispose() {
@@ -69,14 +71,40 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     }
   }
 
+  Future<void> _tryAgain() async {
+    setState(() {
+      _errorMessage = null;
+      _isProcessing = false;
+      _lastScannedValue = null;
+    });
+    try {
+      await _controller.start();
+    } catch (_) {}
+  }
+
+  Future<void> _failScan(String message) async {
+    try {
+      await _controller.stop();
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _errorMessage = message;
+      _isProcessing = false;
+    });
+  }
+
   Future<void> _onDetect(BarcodeCapture capture) async {
-    if (_isProcessing) return;
+    if (_isProcessing || _errorMessage != null) return;
     final barcode = capture.barcodes.firstOrNull;
     if (barcode == null || barcode.rawValue == null) return;
 
-    setState(() => _isProcessing = true);
-
     final rawData = barcode.rawValue!;
+    // Ignore duplicate detections of the exact same code while we're still
+    // handling/showing the previous result.
+    if (rawData == _lastScannedValue) return;
+    _lastScannedValue = rawData;
+
+    setState(() => _isProcessing = true);
 
     // Check if this is an IVD login QR code
     try {
@@ -92,15 +120,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
     final result = QrService.parseQrData(rawData);
 
     if (!result.isValid) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.errorMessage ?? 'Invalid QR code'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => _isProcessing = false);
-      }
+      await _failScan(result.errorMessage ?? 'Invalid QR code');
       return;
     }
 
@@ -137,23 +157,13 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
         Navigator.of(context).pop(true);
       }
     } catch (e) {
-      if (mounted) {
-        // Extract the actual error message from DioException
-        String errorMsg = 'Failed to verify QR code';
-        if (e is DioException && e.response?.data is Map) {
-          errorMsg = e.response?.data['error'] ?? errorMsg;
-        } else if (e is DioException) {
-          errorMsg = e.message ?? errorMsg;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMsg),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-        setState(() => _isProcessing = false);
+      String errorMsg = 'Failed to verify QR code';
+      if (e is DioException && e.response?.data is Map) {
+        errorMsg = e.response?.data['error'] ?? errorMsg;
+      } else if (e is DioException) {
+        errorMsg = e.message ?? errorMsg;
       }
+      await _failScan(errorMsg);
     }
   }
 
@@ -214,8 +224,42 @@ class _QrScannerScreenState extends State<QrScannerScreen> {
             ),
           ),
 
+          // Error overlay with Try Again — fully resets scanner state so a
+          // previously-rejected code doesn't keep firing the same error.
+          if (_errorMessage != null)
+            Container(
+              color: Colors.black87,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 56),
+                      const SizedBox(height: 16),
+                      Text(
+                        _errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: _tryAgain,
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try Again'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(false),
+                        child: const Text('Cancel', style: TextStyle(color: Colors.white70)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
           // Processing indicator
-          if (_isProcessing)
+          if (_isProcessing && _errorMessage == null)
             Container(
               color: Colors.black45,
               child: const Center(
