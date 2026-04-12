@@ -93,6 +93,29 @@ export function pinIcon(color = '#3b82f6') {
   };
 }
 
+/**
+ * Directional arrow marker for moving vehicles/operators.
+ * Rotates to point along `heading` (degrees clockwise from north).
+ * Use for operators — the pin icon stays for fixed customer locations.
+ */
+export function arrowIcon(color = '#2563eb', heading = 0) {
+  if (typeof window === 'undefined' || !window.google) return undefined;
+  // Cone-shaped arrow centered in a 40x40 viewbox, tip at top (pointing up
+  // = heading 0 / north). Rotation applied via transform on the inner group.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+    <g transform="rotate(${heading} 20 20)">
+      <circle cx="20" cy="20" r="13" fill="${color}" fill-opacity="0.18"/>
+      <path d="M20 3 L30 24 L20 19 L10 24 Z" fill="${color}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="20" cy="20" r="3" fill="#fff"/>
+    </g>
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    scaledSize: new window.google.maps.Size(40, 40),
+    anchor: new window.google.maps.Point(20, 20),
+  };
+}
+
 /** Pan/zoom helper usable from outside the component. */
 export function flyTo(map, lat, lng, zoom = 15) {
   if (!map || !lat || !lng) return;

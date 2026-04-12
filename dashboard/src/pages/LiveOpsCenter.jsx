@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
-import GoogleMapView, { MarkerF, InfoWindowF, PolylineF, OverlayViewF, OVERLAY_MOUSE_TARGET, pinIcon, flyTo } from '../components/maps/GoogleMapView';
+import GoogleMapView, { MarkerF, InfoWindowF, PolylineF, OverlayViewF, OVERLAY_MOUSE_TARGET, pinIcon, arrowIcon, flyTo } from '../components/maps/GoogleMapView';
 import {
   Truck, Bot, Activity, User, MapPin, Clock, Battery, ChevronRight,
   AlertTriangle, CheckCircle, Navigation, Eye, RefreshCw
@@ -80,7 +80,14 @@ export default function LiveOpsCenter() {
       const idx = prev.findIndex(v => v.id === data.vehicleId);
       if (idx >= 0) {
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], latitude: data.lat, longitude: data.lng };
+        updated[idx] = {
+          ...updated[idx],
+          latitude: data.lat,
+          longitude: data.lng,
+          // Pass heading/speed through so the arrow rotates as the vehicle moves.
+          ...(data.heading != null && { heading: data.heading }),
+          ...(data.speed != null && { speed: data.speed }),
+        };
         return updated;
       }
       return prev;
@@ -208,15 +215,16 @@ export default function LiveOpsCenter() {
               });
               const isSelected = selectedOperator && op?.id === selectedOperator.id;
               const pos = { lat: Number(v.latitude), lng: Number(v.longitude) };
-              const color = isSelected ? '#ef4444' : '#3b82f6';
+              const color = isSelected ? '#ef4444' : '#2563eb';
               const label = op ? `${op.first_name} · ${v.name}` : v.name;
               const activeJob = op ? getOperatorActiveJob(op.id) : null;
               const robot = op ? getOperatorRobot(op.id) : null;
+              const heading = Number(v.heading || 0);
               const markerKey = `veh-${v.id}`;
 
               return (
                 <Fragment key={markerKey}>
-                  <MarkerF position={pos} icon={pinIcon(color)} onClick={() => setOpenMarkerId(markerKey)} />
+                  <MarkerF position={pos} icon={arrowIcon(color, heading)} onClick={() => setOpenMarkerId(markerKey)} />
                   <OverlayViewF position={pos} mapPaneName={OVERLAY_MOUSE_TARGET} getPixelPositionOffset={(w, h) => ({ x: -(w / 2), y: 4 })}>
                     <span style={{ background: '#fff', color: '#111', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,.25)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
                       {label}
@@ -284,7 +292,10 @@ export default function LiveOpsCenter() {
 
           {/* Map legend */}
           <div className="absolute bottom-4 left-4 bg-white/95 rounded-lg shadow-lg p-3 z-[1000] text-xs space-y-1.5">
-            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /> Vehicle / Operator</div>
+            <div className="flex items-center gap-2">
+              <svg width="14" height="14" viewBox="0 0 40 40"><path d="M20 3 L30 24 L20 19 L10 24 Z" fill="#2563eb" stroke="#fff" strokeWidth="2" strokeLinejoin="round"/></svg>
+              Vehicle / Operator
+            </div>
             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500" /> Robot</div>
             <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-500" /> Customer</div>
             {showTrails && <div className="flex items-center gap-2"><div className="w-6 border-t-2 border-dashed border-blue-500" /> Route Trail</div>}
