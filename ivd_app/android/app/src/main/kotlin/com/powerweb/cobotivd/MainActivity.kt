@@ -77,8 +77,12 @@ class MainActivity : FlutterActivity() {
                 Intent(Intent.ACTION_VIEW, Uri.parse("google.navigation:q=$lat,$lng&mode=d")),
             ),
             Candidate(
+                // Universal link form. The `waze://?ll=…` deep link
+                // intermittently produced "couldn't calculate route" on
+                // recent Waze builds. The https form is handled by the
+                // same activity filter and routes reliably.
                 "com.waze",
-                Intent(Intent.ACTION_VIEW, Uri.parse("waze://?ll=$lat,$lng&navigate=yes")),
+                Intent(Intent.ACTION_VIEW, Uri.parse("https://www.waze.com/ul?ll=$lat%2C$lng&navigate=yes&zoom=17")),
             ),
         )
 
