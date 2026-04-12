@@ -61,6 +61,11 @@ const Customer = sequelize.define('Customer', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
   },
+  customer_code: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    unique: true,
+  },
   company_name: {
     type: DataTypes.STRING(255),
     allowNull: false,

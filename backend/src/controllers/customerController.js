@@ -45,6 +45,21 @@ async function getCustomer(req, res, next) {
   }
 }
 
+async function generateCustomerCode() {
+  // CUST-0001 style sequential code, derived from current customer count.
+  const count = await Customer.count();
+  let n = count + 1;
+  // ensure uniqueness in case of gaps / concurrent inserts
+  // (loop a few times before giving up)
+  for (let i = 0; i < 50; i++) {
+    const code = `CUST-${String(n).padStart(4, '0')}`;
+    const exists = await Customer.findOne({ where: { customer_code: code } });
+    if (!exists) return code;
+    n++;
+  }
+  return `CUST-${Date.now().toString().slice(-6)}`;
+}
+
 async function createCustomer(req, res, next) {
   try {
     const { portal_password, ...data } = req.body;
@@ -52,6 +67,10 @@ async function createCustomer(req, res, next) {
     if (portal_password) {
       const salt = await bcrypt.genSalt(10);
       data.portal_password_hash = await bcrypt.hash(portal_password, salt);
+    }
+
+    if (!data.customer_code || !String(data.customer_code).trim()) {
+      data.customer_code = await generateCustomerCode();
     }
 
     const customer = await Customer.create(data);
@@ -115,6 +134,12 @@ async function getCustomerInvoices(req, res, next) {
     const { page, limit, offset } = paginateQuery(req.query);
     const { rows, count } = await Invoice.findAndCountAll({
       where: { customer_id: req.params.id },
+      include: [{
+        model: Job,
+        attributes: ['id', 'job_number', 'service_type', 'description', 'scheduled_date',
+          'start_time', 'completion_time', 'actual_duration_minutes'],
+        required: false,
+      }],
       order: [['issue_date', 'DESC']],
       limit,
       offset,
@@ -127,16 +152,34 @@ async function getCustomerInvoices(req, res, next) {
 
 async function getCustomerReports(req, res, next) {
   try {
-    const { JobReport } = require('../models');
-    const reports = await JobReport.findAll({
-      include: [{
-        model: Job,
-        where: { customer_id: req.params.id },
-        attributes: ['id', 'job_number', 'service_type', 'scheduled_date'],
-      }],
-      order: [['uploaded_at', 'DESC']],
+    const { JobReport, User } = require('../models');
+    const where = { customer_id: req.params.id };
+    if (req.query.date_from || req.query.date_to) {
+      const { Op } = require('sequelize');
+      where.scheduled_date = {};
+      if (req.query.date_from) where.scheduled_date[Op.gte] = req.query.date_from;
+      if (req.query.date_to) where.scheduled_date[Op.lte] = req.query.date_to;
+    }
+    const jobs = await Job.findAll({
+      where,
+      attributes: [
+        'id', 'job_number', 'service_type', 'description', 'status',
+        'scheduled_date', 'scheduled_time', 'start_time', 'completion_time',
+        'estimated_duration_minutes', 'actual_duration_minutes',
+        'total_cost', 'currency', 'notes',
+      ],
+      include: [
+        {
+          model: JobReport,
+          as: 'reports',
+          required: false,
+          include: [{ model: User, as: 'uploader', attributes: ['id', 'first_name', 'last_name'] }],
+        },
+        { model: User, as: 'operator', attributes: ['id', 'first_name', 'last_name'] },
+      ],
+      order: [['scheduled_date', 'DESC'], ['scheduled_time', 'DESC']],
     });
-    res.json(reports);
+    res.json(jobs);
   } catch (error) {
     next(error);
   }
@@ -147,7 +190,11 @@ async function generateCustomerQR(req, res, next) {
     const customer = await Customer.findByPk(req.params.id);
     if (!customer) return res.status(404).json({ error: 'Customer not found' });
 
-    const code = `CUST-${customer.id.slice(0, 8).toUpperCase()}`;
+    if (!customer.customer_code) {
+      customer.customer_code = await generateCustomerCode();
+      await customer.save();
+    }
+    const code = customer.customer_code;
     const { qrData, qrImage } = await generateQRCode('customer_location', customer.id, code);
 
     await customer.update({ qr_code: qrData });
