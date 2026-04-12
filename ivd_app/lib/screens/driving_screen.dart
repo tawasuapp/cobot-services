@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:math';
 import '../providers/job_provider.dart';
 import '../providers/location_provider.dart';
+import '../providers/settings_provider.dart';
 import '../config/theme.dart';
 import '../widgets/ivd_button.dart';
 
@@ -21,7 +23,13 @@ class _DrivingScreenState extends State<DrivingScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final job = context.read<JobProvider>().currentJob;
       if (job != null) {
-        context.read<LocationProvider>().startTracking(activeJob: job);
+        // Apply the admin-configured arrival radius (set in dashboard
+        // Settings > System > Arrival Radius) before tracking starts so
+        // auto-arrival fires at the correct distance.
+        final settings = context.read<SettingsProvider>();
+        final loc = context.read<LocationProvider>();
+        loc.arrivalRadiusMeters = settings.arrivalRadiusMeters;
+        loc.startTracking(activeJob: job);
       }
     });
   }
@@ -115,18 +123,15 @@ class _DrivingScreenState extends State<DrivingScreen> {
     }
   }
 
-  Future<void> _manualArrival() async {
-    final jobProvider = context.read<JobProvider>();
-    final locationProvider = context.read<LocationProvider>();
-    final job = jobProvider.currentJob;
-    if (job == null) return;
-
-    await jobProvider.markArrived(job.id);
-    locationProvider.stopTracking();
-
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/arrived');
-    }
+  /// Distance in meters between two GPS coordinates (Haversine).
+  double _distanceMeters(double lat1, double lon1, double lat2, double lon2) {
+    const earthRadius = 6371000.0;
+    double toRad(double d) => d * pi / 180;
+    final dLat = toRad(lat2 - lat1);
+    final dLon = toRad(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(toRad(lat1)) * cos(toRad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    return 2 * earthRadius * atan2(sqrt(a), sqrt(1 - a));
   }
 
   @override
@@ -261,33 +266,24 @@ class _DrivingScreenState extends State<DrivingScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: IvdButton(
-                          label: 'OPEN MAPS',
-                          icon: Icons.map,
-                          onPressed: _openMaps,
-                          backgroundColor: IvdTheme.primaryBlue,
-                          minHeight: 68,
-                          fontSize: 20,
-                          expanded: true,
-                        ),
-                      ),
-                      const SizedBox(width: 24),
-                      Expanded(
-                        child: IvdButton(
-                          label: "I'VE ARRIVED",
-                          icon: Icons.location_on,
-                          onPressed: _manualArrival,
-                          backgroundColor: IvdTheme.successGreen,
-                          minHeight: 68,
-                          fontSize: 20,
-                          expanded: true,
-                        ),
-                      ),
-                    ],
+                  // Auto-arrival status indicator. Replaces the old manual
+                  // "I've Arrived" button — drivers should never confirm
+                  // arrival themselves; the system marks them arrived once
+                  // GPS reports they are within the configured radius of the
+                  // customer location (admin-set in dashboard Settings).
+                  if (job != null && _currentPosition() != null)
+                    _buildArrivalStatus(job, _currentPosition()!,
+                        context.watch<SettingsProvider>().arrivalRadiusMeters),
+                  const SizedBox(height: 16),
+                  // Single primary action: open the navigation app.
+                  IvdButton(
+                    label: 'OPEN MAPS',
+                    icon: Icons.map,
+                    onPressed: _openMaps,
+                    backgroundColor: IvdTheme.primaryBlue,
+                    minHeight: 68,
+                    fontSize: 20,
+                    expanded: true,
                   ),
                 ],
               ),
@@ -295,6 +291,50 @@ class _DrivingScreenState extends State<DrivingScreen> {
           ),
         ],
       ),
+      ),
+    );
+  }
+
+  /// Read the operator's current GPS position from the LocationProvider.
+  /// Returns `(lat, lng)` or null if no fix yet.
+  ({double lat, double lng})? _currentPosition() {
+    final loc = context.watch<LocationProvider>();
+    final p = loc.currentPosition;
+    if (p == null) return null;
+    return (lat: p.latitude, lng: p.longitude);
+  }
+
+  /// Banner showing distance to destination + auto-arrival status.
+  /// Replaces the old manual "I've Arrived" button — drivers no longer
+  /// confirm arrival themselves.
+  Widget _buildArrivalStatus(
+      dynamic job, ({double lat, double lng}) pos, double radiusMeters) {
+    final destLat = job.customer.latitude as double;
+    final destLng = job.customer.longitude as double;
+    final distance = _distanceMeters(pos.lat, pos.lng, destLat, destLng);
+    final within = distance <= radiusMeters;
+    final color = within ? IvdTheme.successGreen : IvdTheme.accentBlue;
+    final label = within
+        ? 'Arrived — confirming with system…'
+        : '${distance.toStringAsFixed(0)} m to destination · auto-arrival within ${radiusMeters.toStringAsFixed(0)} m';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(within ? Icons.check_circle : Icons.gps_fixed, color: color, size: 26),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 18, color: color, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

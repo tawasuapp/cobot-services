@@ -7,6 +7,7 @@ import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/job_provider.dart';
 import 'providers/location_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/driving_screen.dart';
@@ -43,6 +44,7 @@ class CobotIvdApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => JobProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..load()),
       ],
       child: MaterialApp(
         title: 'Cobot IVD',

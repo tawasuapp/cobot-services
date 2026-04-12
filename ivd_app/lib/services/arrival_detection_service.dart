@@ -4,7 +4,10 @@ import '../services/api_service.dart';
 import '../config/api_config.dart';
 
 class ArrivalDetectionService {
-  static const double arrivalThresholdMeters = 100.0;
+  /// Default radius applied when the admin-configured value cannot be read
+  /// from the backend. Overridden per-call via `thresholdMeters` so the IVD
+  /// app honors the value set in the dashboard's Settings > System tab.
+  static const double defaultArrivalThresholdMeters = 100.0;
 
   final ApiService _apiService = ApiService();
 
@@ -41,6 +44,7 @@ class ArrivalDetectionService {
     required double currentLat,
     required double currentLng,
     required Job job,
+    double thresholdMeters = defaultArrivalThresholdMeters,
   }) async {
     final double distance = haversineDistance(
       currentLat,
@@ -49,7 +53,7 @@ class ArrivalDetectionService {
       job.customer.longitude,
     );
 
-    if (distance <= arrivalThresholdMeters) {
+    if (distance <= thresholdMeters) {
       try {
         await _apiService.post(
           ApiConfig.jobArriveUrl(job.id),

@@ -20,6 +20,11 @@ class LocationProvider extends ChangeNotifier {
   bool _hasArrived = false;
   Job? _activeJob;
 
+  /// Arrival radius in meters. Defaults to 100m but should be set from
+  /// SettingsProvider so the admin-configured value (Settings > System >
+  /// Arrival Radius) governs auto-arrival on the IVD.
+  double arrivalRadiusMeters = 100;
+
   // Set before starting tracking
   String? entityType; // 'vehicle' or 'user'
   String? entityId;
@@ -89,6 +94,7 @@ class LocationProvider extends ChangeNotifier {
           currentLat: position.latitude,
           currentLng: position.longitude,
           job: _activeJob!,
+          thresholdMeters: arrivalRadiusMeters,
         );
         if (arrived) {
           _hasArrived = true;
