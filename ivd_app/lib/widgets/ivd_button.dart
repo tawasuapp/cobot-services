@@ -10,6 +10,7 @@ class IvdButton extends StatelessWidget {
   final double minWidth;
   final double fontSize;
   final bool expanded;
+  final bool isLoading;
 
   const IvdButton({
     super.key,
@@ -22,12 +23,16 @@ class IvdButton extends StatelessWidget {
     this.minWidth = 160,
     this.fontSize = 18,
     this.expanded = false,
+    this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // While loading we ignore taps so repeated presses don't trigger duplicate
+    // API calls. The visible spinner gives the operator immediate feedback.
+    final effectiveOnPressed = isLoading ? null : onPressed;
     final button = ElevatedButton(
-      onPressed: onPressed,
+      onPressed: effectiveOnPressed,
       style: ElevatedButton.styleFrom(
         backgroundColor: backgroundColor ?? Theme.of(context).colorScheme.primary,
         foregroundColor: foregroundColor ?? Colors.white,
@@ -46,11 +51,21 @@ class IvdButton extends StatelessWidget {
         mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (icon != null) ...[
+          if (isLoading) ...[
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                valueColor: AlwaysStoppedAnimation(foregroundColor ?? Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ] else if (icon != null) ...[
             Icon(icon, size: 24),
             const SizedBox(width: 12),
           ],
-          Text(label),
+          Text(isLoading ? 'Please wait…' : label),
         ],
       ),
     );

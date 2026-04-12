@@ -80,7 +80,7 @@ class JobProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateJobStatus(String jobId, JobStatus status) async {
+  Future<bool> updateJobStatus(String jobId, JobStatus status) async {
     try {
       await _apiService.put(
         '/jobs/$jobId/status',
@@ -107,26 +107,24 @@ class JobProvider extends ChangeNotifier {
       }
 
       notifyListeners();
+      return true;
     } catch (e) {
       _errorMessage = 'Failed to update job status: $e';
       debugPrint('UPDATE STATUS ERROR: $e');
       notifyListeners();
+      return false;
     }
   }
 
-  Future<void> startDriving(String jobId) async {
-    await updateJobStatus(jobId, JobStatus.enRoute);
-  }
+  Future<bool> startDriving(String jobId) =>
+      updateJobStatus(jobId, JobStatus.enRoute);
 
-  Future<void> markArrived(String jobId) async {
-    await updateJobStatus(jobId, JobStatus.arrived);
-  }
+  Future<bool> markArrived(String jobId) =>
+      updateJobStatus(jobId, JobStatus.arrived);
 
-  Future<void> skipJob(String jobId) async {
-    await updateJobStatus(jobId, JobStatus.cancelled);
-  }
+  Future<bool> skipJob(String jobId) =>
+      updateJobStatus(jobId, JobStatus.cancelled);
 
-  Future<void> completeJob(String jobId) async {
-    await updateJobStatus(jobId, JobStatus.completed);
-  }
+  Future<bool> completeJob(String jobId) =>
+      updateJobStatus(jobId, JobStatus.completed);
 }

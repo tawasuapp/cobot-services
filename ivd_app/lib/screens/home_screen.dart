@@ -16,6 +16,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // Guards against the operator double-tapping "Start Driving" while the API
+  // call is still in flight — previously this caused the screen to feel stuck
+  // because every tap kicked off another request.
+  bool _startingDrive = false;
+
   @override
   void initState() {
     super.initState();
@@ -24,11 +29,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  void _startDriving(Job job) async {
+  Future<void> _startDriving(Job job) async {
+    if (_startingDrive) return;
+    setState(() => _startingDrive = true);
     final jobProvider = context.read<JobProvider>();
-    await jobProvider.startDriving(job.id);
-    if (mounted) {
+    final ok = await jobProvider.startDriving(job.id);
+    if (!mounted) return;
+    setState(() => _startingDrive = false);
+    if (ok) {
       Navigator.of(context).pushNamed('/driving');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: IvdTheme.warningOrange,
+          content: Text(jobProvider.errorMessage ?? 'Could not start driving — please retry.'),
+        ),
+      );
     }
   }
 
@@ -56,8 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
             color: IvdTheme.surfaceDark,
             child: Row(
               children: [
-                const Icon(Icons.precision_manufacturing,
-                    color: IvdTheme.primaryBlue, size: 28),
+                Image.asset('assets/logo.png', height: 36),
                 const SizedBox(width: 12),
                 const Text(
                   'COBOT SERVICES',
@@ -227,6 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                             icon: Icons.navigation,
                                             onPressed: () =>
                                                 _startDriving(currentJob),
+                                            isLoading: _startingDrive,
                                             backgroundColor:
                                                 IvdTheme.successGreen,
                                             minHeight: 64,
