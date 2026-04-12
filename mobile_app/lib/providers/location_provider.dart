@@ -2,14 +2,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
+import '../services/app_settings_service.dart';
 import '../services/location_service.dart';
 
 class LocationProvider extends ChangeNotifier {
   final LocationService _locationService = LocationService();
   final ApiService _api = ApiService();
 
-  // ── CONFIGURABLE ──
-  static const Duration trackingInterval = Duration(seconds: 10);
+  // Tracking interval comes from the admin dashboard Settings page
+  // (admin.cobot.qa/settings → Location Update Interval).
 
   Position? _currentPosition;
   bool _isTracking = false;
@@ -36,7 +37,17 @@ class LocationProvider extends ChangeNotifier {
     await _captureAndSend();
 
     _trackingTimer?.cancel();
-    _trackingTimer = Timer.periodic(trackingInterval, (_) => _captureAndSend());
+    final interval = AppSettingsService.instance.locationUpdateInterval;
+    _trackingTimer = Timer.periodic(interval, (_) => _captureAndSend());
+  }
+
+  /// Restart the periodic timer with the latest interval from
+  /// AppSettingsService — call after a settings refresh.
+  void restartWithCurrentInterval() {
+    if (!_isTracking) return;
+    _trackingTimer?.cancel();
+    final interval = AppSettingsService.instance.locationUpdateInterval;
+    _trackingTimer = Timer.periodic(interval, (_) => _captureAndSend());
   }
 
   Future<void> stopTracking() async {
