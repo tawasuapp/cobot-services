@@ -1,7 +1,5 @@
-import 'leaflet/dist/leaflet.css';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
-import L from 'leaflet';
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react';
+import GoogleMapView, { MarkerF, InfoWindowF, PolylineF, OverlayViewF, OVERLAY_MOUSE_TARGET, pinIcon, flyTo } from '../components/maps/GoogleMapView';
 import {
   Truck, Bot, Activity, User, MapPin, Clock, Battery, ChevronRight,
   AlertTriangle, CheckCircle, Navigation, Eye, RefreshCw
@@ -14,42 +12,7 @@ import { useSocketEvent } from '../hooks/useSocket';
 import { timeAgo, formatTime } from '../utils/helpers';
 import JobDetailModal from '../components/common/JobDetailModal';
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-const DOHA_CENTER = [25.2854, 51.531];
-
-function pinSvg(fill) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36"><path d="M14 0C6.3 0 0 6.3 0 14c0 10.5 14 22 14 22s14-11.5 14-22C28 6.3 21.7 0 14 0z" fill="${fill}" stroke="#fff" stroke-width="2"/><circle cx="14" cy="14" r="6" fill="#fff"/></svg>`;
-}
-
-function createIcon(color) {
-  return new L.DivIcon({
-    className: '',
-    html: pinSvg(color),
-    iconSize: [28, 36],
-    iconAnchor: [14, 36],
-    popupAnchor: [0, -36],
-  });
-}
-
-function createLabelIcon(color, label) {
-  return new L.DivIcon({
-    className: '',
-    html: `<div style="display:flex;flex-direction:column;align-items:center">${pinSvg(color)}<span style="margin-top:2px;font-size:11px;font-weight:700;color:#333;background:#fff;padding:2px 8px;border-radius:6px;box-shadow:0 2px 6px rgba(0,0,0,.25);white-space:nowrap;line-height:1.2">${label}</span></div>`,
-    iconSize: [120, 56],
-    iconAnchor: [14, 36],
-    popupAnchor: [0, -36],
-  });
-}
-
-const customerIcon = createIcon('#f59e0b');
-const robotMapIcon = createIcon('#22c55e');
-const vehicleMapIcon = createIcon('#3b82f6');
+const DOHA_CENTER = { lat: 25.2854, lng: 51.531 };
 
 export default function LiveOpsCenter() {
   const [vehicles, setVehicles] = useState([]);
@@ -67,6 +30,7 @@ export default function LiveOpsCenter() {
   const [showCustomers, setShowCustomers] = useState(true);
   const [viewJobId, setViewJobId] = useState(null);
   const [showTrails, setShowTrails] = useState(true);
+  const [openMarkerId, setOpenMarkerId] = useState(null);
   const mapRef = useRef(null);
 
   const fetchData = useCallback(async () => {
@@ -153,9 +117,7 @@ export default function LiveOpsCenter() {
   }
 
   function focusOnMap(lat, lng) {
-    if (mapRef.current && lat && lng) {
-      mapRef.current.flyTo([lat, lng], 15, { duration: 1 });
-    }
+    flyTo(mapRef.current, lat, lng, 15);
   }
 
   // Stats
@@ -217,22 +179,24 @@ export default function LiveOpsCenter() {
       <div className="flex-1 flex overflow-hidden">
         {/* Map */}
         <div className="flex-1 relative">
-          <MapContainer center={DOHA_CENTER} zoom={12} className="h-full w-full" ref={mapRef}>
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-
+          <GoogleMapView center={DOHA_CENTER} zoom={12} onMapReady={(m) => { mapRef.current = m; }}>
             {/* Customer markers */}
             {showCustomers && customers.map(c => (
-              <Marker key={`cust-${c.id}`} position={[c.latitude, c.longitude]} icon={customerIcon}>
-                <Popup>
-                  <div className="text-sm">
-                    <p className="font-semibold">{c.company_name}</p>
-                    <p className="text-gray-500">{c.address}</p>
-                  </div>
-                </Popup>
-              </Marker>
+              <MarkerF
+                key={`cust-${c.id}`}
+                position={{ lat: Number(c.latitude), lng: Number(c.longitude) }}
+                icon={pinIcon('#f59e0b')}
+                onClick={() => setOpenMarkerId(`cust-${c.id}`)}
+              >
+                {openMarkerId === `cust-${c.id}` && (
+                  <InfoWindowF position={{ lat: Number(c.latitude), lng: Number(c.longitude) }} onCloseClick={() => setOpenMarkerId(null)}>
+                    <div className="text-sm">
+                      <p className="font-semibold">{c.company_name}</p>
+                      <p className="text-gray-500">{c.address}</p>
+                    </div>
+                  </InfoWindowF>
+                )}
+              </MarkerF>
             ))}
 
             {/* Vehicle markers with operator labels */}
@@ -243,64 +207,80 @@ export default function LiveOpsCenter() {
                 return job || v.assigned_driver_id === o.id;
               });
               const isSelected = selectedOperator && op?.id === selectedOperator.id;
-              const icon = op
-                ? createLabelIcon(isSelected ? '#ef4444' : '#3b82f6', `${op.first_name} - ${v.name}`)
-                : createIcon('#3b82f6');
+              const pos = { lat: Number(v.latitude), lng: Number(v.longitude) };
+              const color = isSelected ? '#ef4444' : '#3b82f6';
+              const label = op ? `${op.first_name} · ${v.name}` : v.name;
+              const activeJob = op ? getOperatorActiveJob(op.id) : null;
+              const robot = op ? getOperatorRobot(op.id) : null;
+              const markerKey = `veh-${v.id}`;
 
               return (
-                <Marker key={v.id} position={[v.latitude, v.longitude]} icon={icon}>
-                  <Popup>
-                    <div className="text-sm space-y-1 min-w-[180px]">
-                      <p className="font-bold text-base">{v.name}</p>
-                      <p className="text-gray-600">Plate: {v.plate_number}</p>
-                      {op && <p className="text-gray-600">Operator: {op.first_name} {op.last_name}</p>}
-                      {(() => {
-                        const activeJob = op ? getOperatorActiveJob(op.id) : null;
-                        const robot = op ? getOperatorRobot(op.id) : null;
-                        return (
-                          <>
-                            {activeJob && (
-                              <div className="mt-1 pt-1 border-t border-gray-200">
-                                <p className="text-gray-800 font-medium">{activeJob.Customer?.company_name || 'Job'}</p>
-                                <p className="text-gray-500">{activeJob.service_type} - <span className="font-medium">{activeJob.status}</span></p>
-                              </div>
-                            )}
-                            {robot && (
-                              <div className="mt-1 pt-1 border-t border-gray-200">
-                                <p className="text-gray-600">Robot: {robot.name} ({robot.battery_level}%)</p>
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </Popup>
-                </Marker>
+                <Fragment key={markerKey}>
+                  <MarkerF position={pos} icon={pinIcon(color)} onClick={() => setOpenMarkerId(markerKey)} />
+                  <OverlayViewF position={pos} mapPaneName={OVERLAY_MOUSE_TARGET} getPixelPositionOffset={(w, h) => ({ x: -(w / 2), y: 4 })}>
+                    <span style={{ background: '#fff', color: '#111', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,.25)', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+                      {label}
+                    </span>
+                  </OverlayViewF>
+                  {openMarkerId === markerKey && (
+                    <InfoWindowF position={pos} onCloseClick={() => setOpenMarkerId(null)}>
+                      <div className="text-sm space-y-1 min-w-[180px]">
+                        <p className="font-bold text-base">{v.name}</p>
+                        <p className="text-gray-600">Plate: {v.plate_number}</p>
+                        {op && <p className="text-gray-600">Operator: {op.first_name} {op.last_name}</p>}
+                        {activeJob && (
+                          <div className="mt-1 pt-1 border-t border-gray-200">
+                            <p className="text-gray-800 font-medium">{activeJob.Customer?.company_name || 'Job'}</p>
+                            <p className="text-gray-500">{activeJob.service_type} – <span className="font-medium">{activeJob.status}</span></p>
+                          </div>
+                        )}
+                        {robot && (
+                          <div className="mt-1 pt-1 border-t border-gray-200">
+                            <p className="text-gray-600">Robot: {robot.name} ({robot.battery_level}%)</p>
+                          </div>
+                        )}
+                      </div>
+                    </InfoWindowF>
+                  )}
+                </Fragment>
               );
             })}
 
             {/* Robot markers */}
             {robots.map(r => {
               if (!r.latitude || !r.longitude) return null;
+              const pos = { lat: Number(r.latitude), lng: Number(r.longitude) };
+              const markerKey = `robot-${r.id}`;
               return (
-                <Marker key={`robot-${r.id}`} position={[r.latitude, r.longitude]} icon={robotMapIcon}>
-                  <Popup>
-                    <div className="text-sm">
-                      <p className="font-semibold">{r.name}</p>
-                      <p className="text-gray-500">{r.serial_number} | {r.status} | {r.battery_level}%</p>
-                    </div>
-                  </Popup>
-                </Marker>
+                <MarkerF
+                  key={markerKey}
+                  position={pos}
+                  icon={pinIcon('#22c55e')}
+                  onClick={() => setOpenMarkerId(markerKey)}
+                >
+                  {openMarkerId === markerKey && (
+                    <InfoWindowF position={pos} onCloseClick={() => setOpenMarkerId(null)}>
+                      <div className="text-sm">
+                        <p className="font-semibold">{r.name}</p>
+                        <p className="text-gray-500">{r.serial_number} | {r.status} | {r.battery_level}%</p>
+                      </div>
+                    </InfoWindowF>
+                  )}
+                </MarkerF>
               );
             })}
 
             {/* Location history trails */}
             {showTrails && Object.entries(locationHistory).map(([vehicleId, points]) => (
               points.length > 1 && (
-                <Polyline key={`trail-${vehicleId}`} positions={points} color="#3b82f6" weight={3} opacity={0.6} dashArray="8 4" />
+                <PolylineF
+                  key={`trail-${vehicleId}`}
+                  path={points.map(([lat, lng]) => ({ lat, lng }))}
+                  options={{ strokeColor: '#3b82f6', strokeWeight: 3, strokeOpacity: 0.7 }}
+                />
               )
             ))}
-          </MapContainer>
+          </GoogleMapView>
 
           {/* Map legend */}
           <div className="absolute bottom-4 left-4 bg-white/95 rounded-lg shadow-lg p-3 z-[1000] text-xs space-y-1.5">
