@@ -1,7 +1,8 @@
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Radio, Briefcase, Users, Bot, Truck,
-  DollarSign, BarChart3, Bell, Settings, LogOut, FileText, X, ChevronRight, Camera
+  DollarSign, BarChart3, Bell, Settings, LogOut, FileText, X, ChevronRight, Camera,
+  Box,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,7 +17,7 @@ const navSections = [
   {
     label: 'Operations',
     items: [
-      { to: '/jobs', icon: Briefcase, label: 'All Jobs' },
+      { to: '/jobs', icon: Briefcase, label: 'Jobs & Tasks' },
       { to: '/jobs/contracts', icon: FileText, label: 'Contracts' },
       { to: '/jobs/templates', icon: FileText, label: 'Templates' },
     ],
@@ -32,7 +33,7 @@ const navSections = [
   {
     label: 'Business',
     items: [
-      { to: '/finance', icon: DollarSign, label: 'Finance' },
+      { to: '/finance', icon: DollarSign, label: 'Finance & Invoicing' },
       { to: '/reports', icon: Camera, label: 'Reports' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },
       { to: '/alerts', icon: Bell, label: 'Alerts' },
@@ -43,31 +44,32 @@ const navSections = [
 
 export default function Sidebar({ onClose }) {
   const { logout, user } = useAuth();
-  const location = useLocation();
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 text-white flex flex-col h-screen">
-      {/* Logo */}
-      <div className="px-4 py-4 flex items-center justify-between">
+    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
+      {/* Brand */}
+      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100">
         <div className="flex items-center gap-2.5">
-          <img src="/icon.png" alt="" className="h-9 w-9 object-contain" />
-          <div>
-            <span className="text-base font-bold tracking-tight text-white">Cobot<span className="font-normal">Services</span></span>
-            <p className="text-[8px] uppercase tracking-[0.2em] text-gray-500 -mt-0.5">Enhanced Autonomous Services</p>
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-sm shadow-indigo-200">
+            <Box size={20} className="text-white" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-base font-bold text-gray-900 tracking-tight">Cobot</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-gray-400 -mt-0.5">Enterprise</p>
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-white/10">
-            <X size={20} />
+          <button onClick={onClose} className="lg:hidden p-1 rounded hover:bg-gray-100 text-gray-500">
+            <X size={18} />
           </button>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-5">
+      <nav className="sidebar-scroll-light flex-1 overflow-y-auto px-3 py-4 space-y-5">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
+            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -78,14 +80,14 @@ export default function Sidebar({ onClose }) {
                   end={to === '/'}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    `group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                        ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }`
                   }
                 >
-                  <Icon size={18} />
+                  <Icon size={17} />
                   <span className="flex-1">{label}</span>
                   {to === '/alerts' && (
                     <span className="w-2 h-2 rounded-full bg-red-500" />
@@ -98,26 +100,26 @@ export default function Sidebar({ onClose }) {
       </nav>
 
       {/* User profile */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-3 border-t border-gray-100">
         <NavLink
           to="/profile"
           onClick={onClose}
-          className="flex items-center gap-3 mb-3 p-1.5 -mx-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
         >
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-sm font-bold shadow-lg">
+          <div className="w-9 h-9 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
             {user?.first_name?.[0]}{user?.last_name?.[0]}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.first_name} {user?.last_name}</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{user?.first_name} {user?.last_name}</p>
             <p className="text-xs text-gray-500 capitalize">{user?.role?.replace('_', ' ')}</p>
           </div>
-          <ChevronRight size={14} className="text-gray-500" />
+          <ChevronRight size={14} className="text-gray-400" />
         </NavLink>
         <button
           onClick={logout}
-          className="flex items-center gap-2 text-xs text-gray-500 hover:text-red-400 transition-colors w-full px-1"
+          className="mt-1 flex items-center gap-2 text-xs text-gray-500 hover:text-red-600 transition-colors w-full px-3 py-1.5"
         >
-          <LogOut size={14} />
+          <LogOut size={13} />
           Sign out
         </button>
       </div>
