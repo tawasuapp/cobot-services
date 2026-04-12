@@ -15,5 +15,6 @@ router.use('/alerts', require('./notifications'));
 router.use('/qr', require('./qr'));
 router.use('/analytics', require('./analytics'));
 router.use('/activity', require('./activity'));
+router.use('/settings', require('./settings'));
 
 module.exports = router;
