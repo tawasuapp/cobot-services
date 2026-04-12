@@ -22,13 +22,23 @@ class AuthProvider extends ChangeNotifier {
   String? get error => _error;
 
   Future<void> tryAutoLogin() async {
-    final token = await _storage.read(key: AppConfig.tokenKey);
-    if (token == null) return;
+    try {
+      final token = await _storage.read(key: AppConfig.tokenKey);
+      if (token == null) return;
 
-    final userData = await _storage.read(key: AppConfig.userKey);
-    if (userData != null) {
+      final userData = await _storage.read(key: AppConfig.userKey);
+      if (userData == null) return;
+
       _currentUser = User.fromJson(jsonDecode(userData));
       notifyListeners();
+    } catch (e) {
+      // Stale or incompatible storage from a previous install — clear and
+      // force a fresh login instead of hanging on a blank screen.
+      debugPrint('Auto-login failed, clearing stored session: $e');
+      try {
+        await _storage.deleteAll();
+      } catch (_) {}
+      _currentUser = null;
     }
   }
 
